@@ -1,59 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-type Mode = "work" | "shortBreak" | "longBreak";
-
-const MODES: Record<Mode, { label: string; short: string; duration: number; note: string }> = {
-  work: { label: "Focus", short: "WORK", duration: 25 * 60, note: "one clear block" },
-  shortBreak: { label: "Short break", short: "PAUSE", duration: 5 * 60, note: "step away" },
-  longBreak: { label: "Long break", short: "RESET", duration: 15 * 60, note: "let the day widen" },
-};
-
-function clock(seconds: number) {
-  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-}
+import { MODES, initialTimer, chooseMode as switchMode, resetTimer, tickTimer, clock, type Mode } from "@/lib/timer";
 
 export default function Home() {
-  const [mode, setMode] = useState<Mode>("work");
-  const [remaining, setRemaining] = useState(MODES.work.duration);
-  const [active, setActive] = useState(false);
-  const [sessions, setSessions] = useState(0);
+  const [timer, setTimer] = useState(initialTimer);
+  const { mode, remaining, active, sessions } = timer;
 
   useEffect(() => {
     if (!active) return;
-    const interval = window.setInterval(() => {
-      setRemaining((current) => {
-        if (current > 1) return current - 1;
-        setActive(false);
-        if (mode === "work") {
-          setSessions((count) => {
-            const next = count + 1;
-            const nextMode: Mode = next % 4 === 0 ? "longBreak" : "shortBreak";
-            setMode(nextMode);
-            setRemaining(MODES[nextMode].duration);
-            return next;
-          });
-        } else {
-          setMode("work");
-          setRemaining(MODES.work.duration);
-        }
-        return 0;
-      });
-    }, 1000);
+    const interval = window.setInterval(() => setTimer(tickTimer), 1000);
     return () => window.clearInterval(interval);
-  }, [active, mode]);
+  }, [active]);
 
-  const chooseMode = (nextMode: Mode) => {
-    setActive(false);
-    setMode(nextMode);
-    setRemaining(MODES[nextMode].duration);
-  };
-
-  const reset = () => {
-    setActive(false);
-    setRemaining(MODES[mode].duration);
-  };
+  const chooseMode = (nextMode: Mode) => setTimer(current => switchMode(current, nextMode));
+  const reset = () => setTimer(resetTimer);
 
   const progress = 1 - remaining / MODES[mode].duration;
 
@@ -86,7 +47,7 @@ export default function Home() {
               <span style={{ width: `${progress * 100}%` }} />
             </div>
             <div className="timer-actions">
-              <button type="button" className={active ? "primary pause" : "primary"} onClick={() => setActive((value) => !value)}>{active ? "Pause clock" : "Start clock"}</button>
+              <button type="button" className={active ? "primary pause" : "primary"} onClick={() => setTimer(current => ({ ...current, active: !current.active }))}>{active ? "Pause clock" : "Start clock"}</button>
               <button type="button" className="secondary" onClick={reset}>Reset fold</button>
             </div>
             <p className="boundary-note"><b>LOCAL TIMER</b> / This page does not send alerts, store history, or sync a session.</p>

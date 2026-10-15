@@ -40,3 +40,16 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - **Mobile App:** [bookchaowalit-pomodoro-timer-mobile](https://github.com/bookchaowalit-mobile/bookchaowalit-pomodoro-timer-mobile)
 - **Portfolio:** [bookchaowalit.com](https://bookchaowalit.com)
 
+
+## Checks
+
+```bash
+npm ci
+npm test
+npm run lint
+npm run typecheck
+npm run build
+```
+
+Timer transitions live in `lib/timer.ts`; Node test-runner fake timers cover
+countdown completion, pause, mode changes and the fourth-session long break.

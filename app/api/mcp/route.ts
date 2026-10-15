@@ -6,17 +6,7 @@ interface MCPRequest {
   jsonrpc: '2.0';
   id: number | string;
   method: string;
-  params?: any;
-}
-
-interface MCPResponse {
-  jsonrpc: '2.0';
-  id: number | string;
-  result?: any;
-  error?: {
-    code: number;
-    message: string;
-  };
+  params?: unknown;
 }
 
 async function getData() {
@@ -29,9 +19,9 @@ export async function POST(request: NextRequest) {
   try {
     const body: MCPRequest = await request.json();
     requestId = body.id;
-    const { method, params, id } = body;
+    const { method, id } = body;
 
-    let result: any = {};
+    let result: unknown = {};
 
     switch (method) {
       case 'initialize':
