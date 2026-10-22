@@ -1,55 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pomodoro Timer (Focus Fold)
 
-## Getting Started
+A client-side Pomodoro focus clock: Focus (25 min), Short break (5 min) and Long break (15 min), with start/pause/reset
+and an in-memory count of completed focus sessions. Every fourth completed focus opens a long break.
 
-First, run the development server:
+Live: https://pomodoro-timer.bookchaowalit.com (deployed by Vercel CLI; it can lag `main`, see `PRODUCT.md`).
+
+## What it does not do
+
+- No sound, browser notifications or alerts when a session ends.
+- No saved history: the session count resets when the page reloads. No account, no sync.
+- Durations are fixed; they cannot be customised.
+
+## Run
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-## Related
-
-- **Mobile App:** [bookchaowalit-pomodoro-timer-mobile](https://github.com/bookchaowalit-mobile/bookchaowalit-pomodoro-timer-mobile)
-- **Portfolio:** [bookchaowalit.com](https://bookchaowalit.com)
-
 
 ## Checks
 
 ```bash
-npm ci
-npm test
+npm test           # node:test with fake timers (lib/timer.ts), the MCP handler and the Sentry scrubbing
 npm run lint
 npm run typecheck
 npm run build
 ```
 
-Timer transitions live in `lib/timer.ts`; Node test-runner fake timers cover
-countdown completion, pause, mode changes and the fourth-session long break.
+CI (`.github/workflows/ci.yml`) runs the shared Node workflow and the shared security scan on every push and PR to `main`.
+
+## Code map
+
+- `lib/timer.ts`: pure timer transitions (mode switch, tick, reset, session counting).
+- `lib/mcp.ts` + `app/api/mcp/route.ts`: JSON-RPC endpoint with one tool, `get_timer_modes`, that returns the real modes and durations.
+- `lib/sentry.ts` + `instrumentation*.ts`: error reporting to Sentry, errors only, personal data stripped; off when
+  `NEXT_PUBLIC_SENTRY_DSN` is unset.
+
+## Related
+
+- **Mobile App:** [bookchaowalit-pomodoro-timer-mobile](https://github.com/bookchaowalit-mobile/bookchaowalit-pomodoro-timer-mobile)
+- **Portfolio:** [bookchaowalit.com](https://bookchaowalit.com)

@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-11  
 **Tier:** B (showcase)  
-**Title (from README):** or
+**Title (from README):** Pomodoro Timer (Focus Fold)
 
 ## Who / problem
 
@@ -21,7 +21,7 @@ npm run build
 Package name: `bookchaowalit-pomodoro-timer-frontend`  
 Scripts seen: dev, build, start, lint  
 Docker marker: no  
-Tests signal: no
+Tests signal: yes (2026-10-22: `npm test`, 3 node:test files, shared CI)
 
 ## Claim classes
 
@@ -34,8 +34,8 @@ Tests signal: no
 
 ## Limitations (honest)
 
-- No automated test suite signal found in-tree (or only template residue).
-- No PRODUCT.md — showcase depth, not full interview case study.
+- Tests cover the timer transitions, the MCP handler and the Sentry scrubbing; there is no browser/E2E test.
+- PRODUCT.md is inferred from the code, not from a user interview.
 
 ## Do not
 
