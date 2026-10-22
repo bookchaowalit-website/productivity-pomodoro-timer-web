@@ -1,65 +1,15 @@
-import { NextRequest } from 'next/server';
+import { handleRpc } from "@/lib/mcp";
 
-export const runtime = 'edge';
+export const runtime = "edge";
 
-interface MCPRequest {
-  jsonrpc: '2.0';
-  id: number | string;
-  method: string;
-  params?: unknown;
-}
-
-async function getData() {
-  return { message: 'Sample data' };
-}
-
-export async function POST(request: NextRequest) {
-  let requestId: number | string = 0;
-
+export async function POST(request: Request) {
+  let body: unknown;
   try {
-    const body: MCPRequest = await request.json();
-    requestId = body.id;
-    const { method, id } = body;
-
-    let result: unknown = {};
-
-    switch (method) {
-      case 'initialize':
-        result = {
-          protocolVersion: '2024-11-05',
-          capabilities: { tools: {} },
-          serverInfo: { name: 'MCP Server', version: '1.0.0' }
-        };
-        break;
-
-      case 'tools/list':
-        result = {
-          tools: [
-            {
-              name: 'get_data',
-              description: 'Get sample data',
-              inputSchema: { type: 'object', properties: {} }
-            }
-          ]
-        };
-        break;
-
-      case 'tools/call':
-        result = await getData();
-        break;
-
-      default:
-        throw new Error(`Unknown method: ${method}`);
-    }
-
-    return Response.json({ jsonrpc: '2.0', id, result });
-
-  } catch (error) {
-    return Response.json({
-      jsonrpc: '2.0',
-      id: requestId,
-      error: { code: -32603, message: error instanceof Error ? error.message : 'Internal error' }
-    }, { status: 500 });
+    body = await request.json();
+  } catch {
+    return Response.json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }, { status: 400 });
   }
+  const response = handleRpc(body);
+  if (response === null) return new Response(null, { status: 202 });
+  return Response.json(response);
 }
-

@@ -6,6 +6,8 @@ export const MODES: Record<Mode, { label: string; short: string; duration: numbe
   longBreak: { label: "Long break", short: "RESET", duration: 15 * 60, note: "let the day widen" },
 };
 
+export const LONG_BREAK_EVERY = 4;
+
 export function clock(seconds: number) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
@@ -24,6 +26,6 @@ export function tickTimer(state: TimerState): TimerState {
   if (!state.active) return state;
   if (state.remaining > 1) return { ...state, remaining: state.remaining - 1 };
   const sessions = state.sessions + (state.mode === "work" ? 1 : 0);
-  const mode = state.mode === "work" ? (sessions % 4 === 0 ? "longBreak" : "shortBreak") : "work";
+  const mode = state.mode === "work" ? (sessions % LONG_BREAK_EVERY === 0 ? "longBreak" : "shortBreak") : "work";
   return { mode, remaining: MODES[mode].duration, active: false, sessions };
 }
