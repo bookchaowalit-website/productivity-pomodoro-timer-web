@@ -37,6 +37,7 @@ Standard: ADR-0004 (TDD + SDD). Plan: Big Loop, b-tier-b wave (target L3). Roadm
 | AC-01 | Sentry is off when `NEXT_PUBLIC_SENTRY_DSN` is unset or empty | `tests/sentry.test.ts` "stays disabled" |
 | AC-02 | With a DSN: errors only (no PII, tracing, trace headers, breadcrumbs, transactions) | `tests/sentry.test.ts` "reports errors only" |
 | AC-03 | Before send, request, user, breadcrumbs, extra and stack-frame locals are removed | `tests/sentry.test.ts` "scrubEvent …" (2 tests) |
+| AC-03b | Only platform contexts (os, runtime, browser, device, app) are kept, so `contexts.nextjs.request_path` is dropped; query strings are stripped from `transaction` and tags, and the `url` tag is removed (security review 2026-10-23) | `tests/sentry.test.ts` "drops the request path …" (red against the old scrubber, then green) |
 | AC-04 | `initialize` returns server info; `tools/list` advertises only `get_timer_modes` | `tests/mcp.test.ts` |
 | AC-05 | `tools/call get_timer_modes` returns Focus 25, Short break 5, Long break 15 min and long break every 4 (read from `lib/timer.ts`) | `tests/mcp.test.ts` "returns the real mode durations" |
 | AC-06 | Unknown tool → -32602, unknown method → -32601, malformed request → -32600, notification → no reply, bad JSON → 400 -32700 | `tests/mcp.test.ts`; parse error checked by hand on the local build (`curl -d x` → 400) |
