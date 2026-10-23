@@ -3,7 +3,7 @@ title: "SPEC-001 — Shared CI, Sentry, a real MCP tool and truthful docs"
 status: implemented
 tags: [spec, sdd, tdd, ci, sentry, mcp, docs]
 created: 2026-10-22
-updated: 2026-10-22
+updated: 2026-10-23
 description: "Add the shared CI and security scan, report front-end errors to Sentry without personal data, replace the template MCP route with a tested tool that returns the real timer modes, and make README/PRODUCT/TRUTH-PASS match the code."
 ---
 
@@ -78,7 +78,9 @@ image: layout, clock, buttons, mode rail and session marks render as before. One
 
 ## 7. Deployment state
 
-- No deploy from this change. The Vercel project is linked to the old repo name, so pushes to `main` create no
-  deployment; production (last CLI deploy about 2026-10-08) lags `main` until the owner reconnects Vercel Git (D9).
-  `deploy_workflow` stays a scorecard gap for that reason; no deploy job was added.
-- After D9: confirm Sentry receives a test error and the live `/api/mcp` returns `get_timer_modes`.
+- No deploy from this change itself. The Vercel project is linked to the old repo name, so pushes to `main` create no
+  deployment. On 2026-10-23 the owner approved a one-off CLI deploy of the Next.js security patch (D9a): production now
+  runs `2b229cc`, which contains everything in this spec (live `/api/mcp` `tools/list` returns `get_timer_modes`).
+  Later commits wait for the owner to reconnect Vercel Git (D9). `deploy_workflow` stays a scorecard gap for that
+  reason; no deploy job was added.
+- Still to confirm: Sentry receives a test error from the live site.

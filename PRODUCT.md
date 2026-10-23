@@ -35,9 +35,9 @@ Service Workers and sub-1s load; the card claims review downgraded it from Live 
 
 - Live: https://pomodoro-timer.bookchaowalit.com (HTTP 200 on 2026-10-22).
 - The Vercel project is still linked to the old repository name (`bookchaowalit/bookchaowalit-pomodoro-timer-frontend`),
-  so a push to `main` does not deploy. Production was last deployed by CLI (about 2026-10-08) and lags `main` until the
-  owner reconnects Vercel Git to this repository (owner action D9). Until then the live site has no Sentry and still
-  serves the old template MCP route.
+  so a push to `main` does not deploy. Production runs `2b229cc` (Next.js security patch, deployed by CLI on 2026-10-23,
+  owner-approved D9a), which includes Sentry and the real `get_timer_modes` MCP tool (live `/api/mcp` checked 2026-10-23).
+  Later commits on `main` wait until the owner reconnects Vercel Git to this repository (owner action D9).
 
 ## Boundaries
 
