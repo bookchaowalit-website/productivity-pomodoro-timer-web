@@ -32,6 +32,22 @@ test("scrubEvent drops request data, user, breadcrumbs and extra context", () =>
   assert.equal(event.extra, undefined);
 });
 
+test("scrubEvent drops the request path that captureRequestError adds and strips query strings", () => {
+  const event = scrubEvent({
+    transaction: "GET /search?q=private&token=secret",
+    tags: { url: "https://pomodoro-timer.bookchaowalit.com/search?q=private", route: "/search?q=private" },
+    contexts: {
+      nextjs: { request_path: "/search?q=private", router_kind: "App Router", route_type: "render" },
+      trace: { trace_id: "t" },
+      runtime: { name: "node" },
+    },
+  });
+  assert.equal(event.transaction, "GET /search");
+  assert.deepEqual(event.tags, { route: "/search" });
+  assert.deepEqual(event.contexts, { runtime: { name: "node" } });
+  assert.ok(!JSON.stringify(event).includes("private"));
+});
+
 test("scrubEvent removes local variables from stack frames", () => {
   const event = scrubEvent({
     exception: { values: [{ type: "Error", stacktrace: { frames: [{ function: "f", vars: { password: "p" } }] } }] },
