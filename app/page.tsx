@@ -1,75 +1,98 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { MODES, initialTimer, chooseMode as switchMode, resetTimer, tickTimer, clock, type Mode } from "@/lib/timer";
+import { useEffect, useReducer } from "react";
+import { AppFoot, AppTop } from "@/components/app-shell";
+import { SITE_TITLE, SOURCE_URL } from "@/lib/site";
+import { LONG_BREAK_EVERY, MODES, clock, initialView, tabTitle, timerReducer, type Mode } from "@/lib/timer";
+
+const MODE_ORDER = Object.keys(MODES) as Mode[];
 
 export default function Home() {
-  const [timer, setTimer] = useState(initialTimer);
-  const { mode, remaining, active, sessions } = timer;
+  const [view, dispatch] = useReducer(timerReducer, undefined, initialView);
+  const { mode, remaining, active, sessions } = view.timer;
+  const duration = MODES[mode].duration;
 
   useEffect(() => {
     if (!active) return;
-    const interval = window.setInterval(() => setTimer(tickTimer), 1000);
+    const interval = window.setInterval(() => dispatch({ type: "tick" }), 1000);
     return () => window.clearInterval(interval);
   }, [active]);
 
-  const chooseMode = (nextMode: Mode) => setTimer(current => switchMode(current, nextMode));
-  const reset = () => setTimer(resetTimer);
+  // The tab title is the end-of-round signal: time left while running, "Time is up" after a round.
+  const title = tabTitle(view, SITE_TITLE);
+  useEffect(() => {
+    document.title = title;
+  }, [title]);
+  useEffect(() => () => { document.title = SITE_TITLE; }, []);
 
-  const progress = 1 - remaining / MODES[mode].duration;
+  const percent = Math.round(((duration - remaining) / duration) * 100);
+  const marks = sessions % LONG_BREAK_EVERY;
 
   return (
-    <main className="focus-shell">
-      <div className="focus-frame">
-        <header className="focus-topbar">
-          <a href="https://bookchaowalit.com" className="focus-mark" aria-label="Bookchaowalit home"><span>FOCUS</span> / FOLD</a>
-          <span>ONE CLOCK / NO SYNC</span>
-          <span>{String(sessions).padStart(2, "0")} COMPLETED</span>
-        </header>
+    <div className="as">
+      <a className="as-skip" href="#timer">Skip to timer</a>
+      <AppTop name="Pomodoro" tagline="Focus and break timer" />
 
-        <section className="focus-intro">
-          <div>
-            <h1>Make room for<br /><em>one thing.</em></h1>
-            <p>A quiet interval clock for the work in front of you. Choose a fold, start the room, and come back when the mark is complete.</p>
+      <main id="timer" className="pt-body">
+        <h1 className="as-sr">Pomodoro timer</h1>
+        <div className="as-segmented pt-modes" role="group" aria-label="Timer mode">
+          {MODE_ORDER.map((item) => (
+            <button type="button" key={item} aria-pressed={mode === item} onClick={() => dispatch({ type: "choose", mode: item })}>
+              {MODES[item].label}
+            </button>
+          ))}
+        </div>
+
+        <section className="pt-card" aria-label={`${MODES[mode].label} timer`}>
+          <p className="pt-mode">
+            <strong>{MODES[mode].label}</strong> · {duration / 60} min · {active ? "running" : remaining === duration ? "ready" : "paused"}
+          </p>
+          <p className="pt-clock" role="timer">{clock(remaining)}</p>
+          <div
+            className="pt-progress"
+            role="progressbar"
+            aria-label={`${MODES[mode].label} progress`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={percent}
+            aria-valuetext={`${percent}% done, ${clock(remaining)} left of ${clock(duration)}`}
+          >
+            <span style={{ width: `${percent}%` }} />
           </div>
-          <div className="fold-mark" aria-hidden="true"><span>LOCAL</span><b>{String(sessions).padStart(2, "0")}</b><span>NO ALERTS</span></div>
+          <div className="pt-actions">
+            <button type="button" className="as-button pt-start" onClick={() => dispatch({ type: "toggle" })}>
+              {active ? "Pause" : remaining === duration ? "Start" : "Resume"}
+            </button>
+            <button type="button" className="as-plain" onClick={() => dispatch({ type: "reset" })}>Reset</button>
+          </div>
         </section>
 
-        <section className="fold-desk" aria-label="Pomodoro timer">
-          <div className="fold-sheet">
-            <div className="sheet-head"><span>ACTIVE FOLD / {MODES[mode].short}</span><span>{active ? "RUNNING" : "HELD"}</span></div>
-            <div className="timer-copy">
-              <p className="field-label">{MODES[mode].label}</p>
-              <div className="timer-value" aria-live="polite">{clock(remaining)}</div>
-              <p className="timer-note">{MODES[mode].note} / {active ? "stay with it" : "ready when you are"}</p>
-            </div>
-            <div className="crease-track" aria-label={`${Math.round(progress * 100)} percent complete`}>
-              <span style={{ width: `${progress * 100}%` }} />
-            </div>
-            <div className="timer-actions">
-              <button type="button" className={active ? "primary pause" : "primary"} onClick={() => setTimer(current => ({ ...current, active: !current.active }))}>{active ? "Pause clock" : "Start clock"}</button>
-              <button type="button" className="secondary" onClick={reset}>Reset fold</button>
-            </div>
-            <p className="boundary-note"><b>LOCAL TIMER</b> / This page does not send alerts, store history, or sync a session.</p>
-          </div>
-
-          <aside className="mode-rail">
-            <div className="sheet-head"><span>FOLD TYPES</span><span>SELECT ONE</span></div>
-            <div className="mode-list">
-              {(Object.keys(MODES) as Mode[]).map((item) => (
-                <button type="button" key={item} className={mode === item ? "mode-row selected" : "mode-row"} onClick={() => chooseMode(item)} aria-pressed={mode === item}>
-                  <span className="mode-index">{item === "work" ? "A" : item === "shortBreak" ? "B" : "C"}</span>
-                  <span><strong>{MODES[item].label}</strong><small>{MODES[item].duration / 60} MIN / {MODES[item].note}</small></span>
-                  <span className="mode-state">{mode === item ? "OPEN" : "FOLD"}</span>
-                </button>
-              ))}
-            </div>
-            <div className="session-log"><span className="field-label">SESSION MARKS</span><div>{[0, 1, 2, 3].map((mark) => <span className={mark < sessions % 4 ? "mark filled" : "mark"} key={mark}>{mark < sessions % 4 ? "DONE" : "NEXT"}</span>)}</div><p>Every fourth focus fold opens a longer reset.</p></div>
-          </aside>
+        <section className="pt-card pt-sessions" aria-labelledby="sessions-title">
+          <h2 id="sessions-title">Session marks</h2>
+          <ol className="pt-marks">
+            {Array.from({ length: LONG_BREAK_EVERY }, (_, index) => (
+              <li key={index} data-done={index < marks ? "true" : undefined}>
+                <span className="pt-dot" aria-hidden="true" />
+                <span>{index < marks ? "Done" : "Next"}</span>
+              </li>
+            ))}
+          </ol>
+          <p>
+            {marks} of {LONG_BREAK_EVERY} focus blocks in this cycle · every fourth one opens a long break.
+            <br />
+            <span className="pt-total">{sessions} focus {sessions === 1 ? "block" : "blocks"} completed in this visit.</span>
+          </p>
         </section>
 
-        <footer className="focus-footer"><span>BOOK / DEV TOOLS</span><span>FOCUS · PAUSE · RETURN</span></footer>
-      </div>
-    </main>
+        <p className="as-sr" role="status" aria-live="polite">{view.announcement}</p>
+
+        <p className="as-note">
+          Runs in this tab only. No sound, no notifications and no saved history: the count resets when you reload. While
+          the clock runs, the tab title shows the time left, and it says “Time is up” when a round ends.
+        </p>
+      </main>
+
+      <AppFoot source={SOURCE_URL} />
+    </div>
   );
 }

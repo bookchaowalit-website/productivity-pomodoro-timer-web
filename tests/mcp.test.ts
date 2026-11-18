@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { handleRpc, TOOL_NAME } from "../lib/mcp.ts";
 
 test("initialize answers with the Pomodoro server info", () => {

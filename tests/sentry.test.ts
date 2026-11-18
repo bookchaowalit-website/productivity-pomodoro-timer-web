@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { scrubEvent, sentryOptions } from "../lib/sentry.ts";
 
 test("Sentry stays disabled when no DSN is configured", () => {

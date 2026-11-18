@@ -29,3 +29,48 @@ export function tickTimer(state: TimerState): TimerState {
   const mode = state.mode === "work" ? (sessions % LONG_BREAK_EVERY === 0 ? "longBreak" : "shortBreak") : "work";
   return { mode, remaining: MODES[mode].duration, active: false, sessions };
 }
+
+/**
+ * Page state: the timer plus what to tell the person. `announcement` feeds a polite live region
+ * and changes only when the mode changes (picked or at the end of a round), never on each tick.
+ * `finished` names the round that just ended until the person acts again; the page shows it in
+ * the tab title so someone in another tab can see that time is up (no sound, no notifications).
+ */
+export type TimerView = { timer: TimerState; announcement: string; finished: Mode | null };
+export type TimerAction = { type: "tick" } | { type: "toggle" } | { type: "reset" } | { type: "choose"; mode: Mode };
+
+export function initialView(): TimerView {
+  return { timer: initialTimer(), announcement: "", finished: null };
+}
+
+export function timerReducer(view: TimerView, action: TimerAction): TimerView {
+  switch (action.type) {
+    case "tick": {
+      const timer = tickTimer(view.timer);
+      if (timer === view.timer) return view;
+      if (timer.mode === view.timer.mode) return { ...view, timer };
+      const ended = view.timer.mode;
+      return {
+        timer,
+        finished: ended,
+        announcement: `${MODES[ended].label} finished. ${MODES[timer.mode].label} is ready, ${clock(timer.remaining)}. Press Start when you are.`,
+      };
+    }
+    case "toggle":
+      return { ...view, timer: { ...view.timer, active: !view.timer.active }, finished: null };
+    case "reset":
+      return { ...view, timer: resetTimer(view.timer), finished: null };
+    case "choose": {
+      const timer = chooseMode(view.timer, action.mode);
+      return { timer, finished: null, announcement: `${MODES[action.mode].label} selected, ${clock(timer.remaining)}.` };
+    }
+  }
+}
+
+/** Tab title: the time left while running, a plain "time is up" after a round, else the site title. */
+export function tabTitle(view: TimerView, siteTitle: string): string {
+  const { timer, finished } = view;
+  if (timer.active) return `${clock(timer.remaining)} ${MODES[timer.mode].label} · ${siteTitle}`;
+  if (finished) return `Time is up: ${MODES[finished].label} done · ${siteTitle}`;
+  return siteTitle;
+}
