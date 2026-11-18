@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-11  
 **Tier:** B (showcase)  
-**Title (from README):** Pomodoro Timer (Focus Fold)
+**Title (from README):** Pomodoro Timer
 
 ## Who / problem
 
@@ -21,7 +21,7 @@ npm run build
 Package name: `bookchaowalit-pomodoro-timer-frontend`  
 Scripts seen: dev, build, start, lint  
 Docker marker: no  
-Tests signal: yes (2026-10-22: `npm test`, 3 node:test files, shared CI)
+Tests signal: yes (2026-11-18: `npm test` runs vitest, including mounted happy-dom page tests; shared CI)
 
 ## Claim classes
 
@@ -34,7 +34,8 @@ Tests signal: yes (2026-10-22: `npm test`, 3 node:test files, shared CI)
 
 ## Limitations (honest)
 
-- Tests cover the timer transitions, the MCP handler and the Sentry scrubbing; there is no browser/E2E test.
+- Tests cover the timer transitions, the mounted page (happy-dom), the MCP handler and the Sentry scrubbing; there is
+  no real-browser E2E test (2026-11-18 screenshots at 320–1440 px light and dark were checked by hand).
 - PRODUCT.md is inferred from the code, not from a user interview.
 
 ## Do not

@@ -19,7 +19,7 @@ template: architecture-docs templates/sdlc/kpi-and-instrumentation-plan.md
 | AI maker | Claude Code (b-tier-b wave, 2026-10-22) |
 | AI reviewer | independent Claude reviewer subagent (`solo:solo-reviewer`, Sonnet, read-only, no maker context), 2026-10-24: approved (see Approval) |
 | Charter objectives | OBJ-01 below (Tier B showcase; no charter document) |
-| Analytics source of truth | **None live.** Product analytics (PostHog) waits on owner decision D4. `@vercel/analytics` is a dependency but is not mounted in `app/layout.tsx`. Sentry (org `personal-yu0`, project `productivity-pomodoro-timer-web`) is the only live signal (in production since the D9a deploy of `2b229cc` on 2026-10-23). |
+| Analytics source of truth | **None live.** Product analytics (PostHog) waits on owner decision D4. `@vercel/analytics` and `@vercel/speed-insights` were removed on 2026-11-18 (owner decision 2026-11-17: no analytics, no consent banner). Sentry (org `personal-yu0`, project `productivity-pomodoro-timer-web`) is the only live signal (in production since the D9a deploy of `2b229cc` on 2026-10-23). |
 | Dashboard | none |
 | Next review | 2026-11-15 (Milestone M1) |
 
@@ -89,4 +89,4 @@ sets a cookie or device ID, that is personal data under PDPA and needs a consent
 | Checker | independent Claude reviewer subagent (`solo:solo-reviewer`, Sonnet, read-only, no maker context) |
 | Approver | AI approval under the owner's process (approvals by the owner or AI with evidence; maker and checker are different agents). Recorded by Claude session oa-remainder on the owner's instruction "ทำที่เหลือให้หน่อย" (2026-10-24) |
 | Verdict | **approved** |
-| Evidence | Commits 2b229cc and 401bc10 in history; lib/sentry.ts + tests/sentry.test.ts; no planned events in code; @vercel/analytics not mounted; tickTimer in lib/timer.ts. |
+| Evidence | Commits 2b229cc and 401bc10 in history; lib/sentry.ts + tests/sentry.test.ts; no planned events in code; @vercel/analytics removed 2026-11-18; tickTimer in lib/timer.ts. |
