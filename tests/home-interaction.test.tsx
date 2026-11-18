@@ -13,7 +13,10 @@ let host: HTMLDivElement;
 const $ = <T extends Element = HTMLElement>(selector: string) => host.querySelector(selector) as T;
 const button = (text: string) => [...host.querySelectorAll("button")].find((b) => b.textContent?.trim() === text) as HTMLButtonElement;
 const press = (el: Element) => act(() => { el.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
-const seconds = (n: number) => act(() => { vi.advanceTimersByTime(n * 1000); });
+// performance.now() is the timer's clock: a hand-moved reading, advanced together with the fake interval.
+let perf = 0;
+const seconds = (n: number) => act(() => { perf += n * 1000; vi.advanceTimersByTime(n * 1000); });
+const jump = (ms: number) => { perf += ms; }; // time passes with no interval callbacks (throttled tab)
 const clockText = () => $('[role="timer"]').textContent;
 const bar = () => $('[role="progressbar"]');
 const status = () => $('[role="status"]').textContent;
@@ -21,6 +24,8 @@ const pressed = () => [...host.querySelectorAll('[aria-label="Timer mode"] butto
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+  perf = 0;
+  vi.spyOn(performance, "now").mockImplementation(() => perf);
   document.title = SITE_TITLE;
   host = document.createElement("div");
   document.body.append(host);
@@ -31,6 +36,7 @@ afterEach(() => {
   act(() => root.unmount());
   host.remove();
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe("modes", () => {
@@ -97,14 +103,38 @@ describe("a throttled background tab", () => {
   it("catches up from the wall clock when ticks are late or missing", () => {
     press(button("Start"));
     // The browser throttles the hidden tab: 10 minutes pass with no interval callbacks at all.
-    act(() => { vi.setSystemTime(Date.now() + 10 * 60_000); });
+    jump(10 * 60_000);
     act(() => { document.dispatchEvent(new Event("visibilitychange")); });
     expect(clockText()).toBe("15:00");
     expect(document.title).toBe(`15:00 Focus · ${SITE_TITLE}`);
-    act(() => { vi.setSystemTime(Date.now() + 15 * 60_000); });
+    jump(15 * 60_000);
     seconds(1); // a single late tick still ends the round on time
     expect(document.title).toBe(`Time is up: Focus done · ${SITE_TITLE}`);
     expect(pressed()).toEqual(["Short break"]);
+  });
+});
+
+describe("clock changes and late pauses", () => {
+  it("ignores the system clock being set back or forward", () => {
+    press(button("Start"));
+    seconds(60);
+    act(() => { vi.setSystemTime(Date.now() - 60 * 60_000); }); // clock set back one hour
+    seconds(1);
+    expect(clockText()).toBe("23:59");
+    act(() => { vi.setSystemTime(Date.now() + 5 * 60 * 60_000); }); // and forward five hours
+    seconds(1);
+    expect(clockText()).toBe("23:58");
+  });
+
+  it("Pause after time ran out but before a tick ends and counts the round", () => {
+    press(button("Start"));
+    jump(25 * 60_000 + 500);
+    press(button("Pause"));
+    expect(pressed()).toEqual(["Short break"]);
+    expect(clockText()).toBe("05:00");
+    expect(host.textContent).toContain("1 focus block completed in this visit.");
+    expect(document.title).toBe(`Time is up: Focus done · ${SITE_TITLE}`);
+    expect(button("Start")).toBeTruthy();
   });
 });
 

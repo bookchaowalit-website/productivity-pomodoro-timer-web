@@ -38,9 +38,10 @@ export function tickTimer(state: TimerState): TimerState {
  */
 export type TimerView = { timer: TimerState; announcement: string; finished: Mode | null; endsAt: number | null };
 /**
- * `now` is Date.now() in ms. While running, the time left is derived from `endsAt` (the round's end
- * on the wall clock), not from counting interval callbacks: a background tab throttles setInterval,
- * so counting would lag and "Time is up" could come minutes late.
+ * `now` is performance.now() in ms: a monotonic clock, so changing the system clock cannot add or
+ * remove time. While running, `endsAt` is the start reading plus the time left at start, and every
+ * tick derives the time left from it instead of counting interval callbacks: a background tab
+ * throttles setInterval, so counting would lag and "Time is up" could come minutes late.
  */
 export type TimerAction = { type: "tick"; now: number } | { type: "toggle"; now: number } | { type: "reset" } | { type: "choose"; mode: Mode };
 
@@ -60,29 +61,35 @@ function fresh(previous: string, message: string): string {
   return previous === message ? `${message}\u00a0` : message;
 }
 
+/** The round is over (however late we noticed): the last-second transition ends and counts it. */
+function finishRound(view: TimerView): TimerView {
+  const timer = tickTimer({ ...view.timer, active: true, remaining: 1 });
+  const ended = view.timer.mode;
+  return {
+    timer,
+    endsAt: null,
+    finished: ended,
+    announcement: fresh(view.announcement, `${MODES[ended].label} finished. ${MODES[timer.mode].label} is ready, ${clock(timer.remaining)}. Press Start when you are.`),
+  };
+}
+
 export function timerReducer(view: TimerView, action: TimerAction): TimerView {
   switch (action.type) {
     case "tick": {
       if (!view.timer.active || view.endsAt === null) return view;
       const left = secondsLeft(view.endsAt, action.now);
+      if (left === 0) return finishRound(view);
       if (left === view.timer.remaining) return view;
-      if (left > 0) return { ...view, timer: { ...view.timer, remaining: left } };
-      // The round is over (however late this tick came): the last-second transition ends it.
-      const timer = tickTimer({ ...view.timer, remaining: 1 });
-      const ended = view.timer.mode;
-      return {
-        timer,
-        endsAt: null,
-        finished: ended,
-        announcement: fresh(view.announcement, `${MODES[ended].label} finished. ${MODES[timer.mode].label} is ready, ${clock(timer.remaining)}. Press Start when you are.`),
-      };
+      return { ...view, timer: { ...view.timer, remaining: left } };
     }
     // Start, Pause and Reset are not announced; they clear an old "press Start" message.
     case "toggle": {
       if (view.timer.active) {
-        // Pause keeps the time left on the wall clock.
-        const remaining = view.endsAt === null ? view.timer.remaining : Math.max(1, secondsLeft(view.endsAt, action.now));
-        return { timer: { ...view.timer, active: false, remaining }, endsAt: null, finished: null, announcement: "" };
+        if (view.endsAt === null) return { ...view, timer: { ...view.timer, active: false }, finished: null, announcement: "" };
+        const left = secondsLeft(view.endsAt, action.now);
+        // Pause pressed after time ran out but before a tick noticed: end and count the round.
+        if (left === 0) return finishRound(view);
+        return { timer: { ...view.timer, active: false, remaining: left }, endsAt: null, finished: null, announcement: "" };
       }
       return { timer: { ...view.timer, active: true }, endsAt: action.now + view.timer.remaining * 1000, finished: null, announcement: "" };
     }

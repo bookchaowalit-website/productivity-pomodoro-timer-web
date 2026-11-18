@@ -86,7 +86,7 @@ test("start, pause and reset clear the announcement; picking the same mode says 
   assert.equal(timerReducer(view, { type: "reset" }).announcement, "");
 });
 
-test("time left comes from the wall clock, so late or missing ticks cannot drift", () => {
+test("time left comes from the clock reading, so late or missing ticks cannot drift", () => {
   let view = timerReducer(initialView(), { type: "toggle", now: 10_000 });
   view = timerReducer(view, { type: "tick", now: 10_000 + 7 * 60_000 + 400 }); // one tick after 7 minutes
   assert.equal(view.timer.remaining, 18 * 60);
@@ -98,6 +98,13 @@ test("time left comes from the wall clock, so late or missing ticks cannot drift
   const late = timerReducer(view, { type: "tick", now: 1_000_000 + 3 * 60 * 60_000 }); // hours late
   assert.deepEqual(late.timer, { mode: "shortBreak", remaining: 300, active: false, sessions: 1 });
   assert.equal(late.finished, "work");
+  // Pause pressed after the end but before a tick: the round ends and counts, nothing freezes at 00:01.
   const pausedLate = timerReducer(view, { type: "toggle", now: 1_000_000 + 99 * 60_000 });
-  assert.equal(pausedLate.timer.remaining, 1); // pausing after the end keeps one second for the tick to finish
+  assert.deepEqual(pausedLate.timer, { mode: "shortBreak", remaining: 300, active: false, sessions: 1 });
+  assert.equal(pausedLate.finished, "work");
+  assert.match(pausedLate.announcement, /^Focus finished\./);
+  const pausedExact = timerReducer(view, { type: "toggle", now: 1_000_000 + 17 * 60_000 }); // exactly at the end (17 min were left)
+  assert.equal(pausedExact.timer.sessions, 1);
+  const pausedBefore = timerReducer(view, { type: "toggle", now: 1_000_000 + 17 * 60_000 - 1 });
+  assert.deepEqual([pausedBefore.timer.mode, pausedBefore.timer.remaining, pausedBefore.timer.sessions], ["work", 1, 0]);
 });

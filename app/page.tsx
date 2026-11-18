@@ -14,8 +14,8 @@ export default function Home() {
 
   useEffect(() => {
     if (!active) return;
-    // Ticks only re-read the wall clock; a tab coming back into view catches up at once.
-    const tick = () => dispatch({ type: "tick", now: Date.now() });
+    // Ticks only re-read the monotonic clock; a tab coming back into view catches up at once.
+    const tick = () => dispatch({ type: "tick", now: performance.now() });
     const interval = window.setInterval(tick, 1000);
     document.addEventListener("visibilitychange", tick);
     return () => {
@@ -68,7 +68,7 @@ export default function Home() {
             <span style={{ width: `${progress}%` }} />
           </div>
           <div className="pt-actions">
-            <button type="button" className="as-button pt-start" onClick={() => dispatch({ type: "toggle", now: Date.now() })}>
+            <button type="button" className="as-button pt-start" onClick={() => dispatch({ type: "toggle", now: performance.now() })}>
               {active ? "Pause" : remaining === duration ? "Start" : "Resume"}
             </button>
             <button type="button" className="as-plain" onClick={() => dispatch({ type: "reset" })}>Reset</button>
