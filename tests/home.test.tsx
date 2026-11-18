@@ -21,6 +21,19 @@ describe("home page (server render)", () => {
     expect(html).not.toMatch(/FOCUS \/ FOLD|NO ALERTS|crease/i);
   });
 
+  it("keeps the forced-colors focus ring distinct from the selected-mode marker", () => {
+    const css = readFileSync("app/app-shell.css", "utf8");
+    const block = css.slice(css.indexOf("@media (forced-colors: active)"));
+    const rule = (selector: string) => block.match(new RegExp(`${selector.replace(/[[\]().*+?^$|]/g, "\\$&")} \\{([^}]*)\\}`))?.[1] ?? "";
+    const selected = rule('.as-segmented button[aria-pressed="true"]');
+    const focus = rule(".as-segmented button:focus-visible");
+    // The selection must not set an outline, or it overrides (and looks like) the focus ring.
+    expect(selected).toContain("border-bottom: 3px solid Highlight");
+    expect(selected).not.toMatch(/outline/);
+    expect(focus).toMatch(/outline: 3px solid CanvasText/);
+    expect(focus).toMatch(/outline-offset: 2px/);
+  });
+
   it("never live-announces the ticking clock", () => {
     expect(html).not.toMatch(/role="timer"[^>]*aria-live="(polite|assertive)"/);
     expect(html).toMatch(/role="status" aria-live="polite"/);
