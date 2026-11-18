@@ -14,6 +14,8 @@ describe("home page (server render)", () => {
     expect(html).toContain('href="https://bookchaowalit.com/"');
     expect(html).toMatch(/<main id="timer" class="[^"]*as-skip-target/);
     expect(readFileSync("app/app-shell.css", "utf8")).toMatch(/\.as-skip-target \{ scroll-margin-top: 64px; \}/);
+    expect(readFileSync("scripts/deploy-smoke.sh", "utf8")).toContain(`HOME_MARKER='role="timer"'`);
+    expect(readFileSync("app/app-shell.css", "utf8")).toMatch(/aria-pressed="true"\] \{[^}]*inset 0 -3px 0 var\(--as-accent\)/);
     expect(readFileSync("app/layout.tsx", "utf8")).toContain('Geist({ variable: "--font-geist-sans"');
     expect(html).not.toMatch(/FOCUS \/ FOLD|NO ALERTS|crease/i);
   });

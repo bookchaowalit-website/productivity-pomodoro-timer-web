@@ -20,7 +20,7 @@ const status = () => $('[role="status"]').textContent;
 const pressed = () => [...host.querySelectorAll('[aria-label="Timer mode"] button[aria-pressed="true"]')].map((b) => b.textContent);
 
 beforeEach(() => {
-  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
   document.title = SITE_TITLE;
   host = document.createElement("div");
   document.body.append(host);
@@ -90,6 +90,21 @@ describe("start, pause, reset", () => {
     expect(Number(bar().getAttribute("aria-valuenow"))).toBeLessThan(100);
     expect(bar().getAttribute("aria-valuetext")).toBe("99% done, 00:02 left of 05:00");
     expect(bar().querySelector("span")!.style.width).not.toBe("100%");
+  });
+});
+
+describe("a throttled background tab", () => {
+  it("catches up from the wall clock when ticks are late or missing", () => {
+    press(button("Start"));
+    // The browser throttles the hidden tab: 10 minutes pass with no interval callbacks at all.
+    act(() => { vi.setSystemTime(Date.now() + 10 * 60_000); });
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    expect(clockText()).toBe("15:00");
+    expect(document.title).toBe(`15:00 Focus · ${SITE_TITLE}`);
+    act(() => { vi.setSystemTime(Date.now() + 15 * 60_000); });
+    seconds(1); // a single late tick still ends the round on time
+    expect(document.title).toBe(`Time is up: Focus done · ${SITE_TITLE}`);
+    expect(pressed()).toEqual(["Short break"]);
   });
 });
 

@@ -7,7 +7,7 @@
 # 3. MAIN_ROUTE answers 200 and shows MAIN_MARKER.
 set -euo pipefail
 
-HOME_MARKER="Pomodoro Timer"
+HOME_MARKER='role="timer"'  # the clock element, not the <title>
 HEALTH_PATH="/api/health"
 MAIN_ROUTE="/robots.txt"
 MAIN_MARKER="Sitemap: https://pomodoro-timer.bookchaowalit.com/sitemap.xml"

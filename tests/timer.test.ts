@@ -48,20 +48,22 @@ test("reset holds the current mode and preserves session count", () => {
 
 test("the page reducer announces mode changes and round ends, never plain ticks", () => {
   let view = initialView();
-  assert.equal(timerReducer(view, { type: "tick" }), view); // held clock: same object
+  assert.equal(timerReducer(view, { type: "tick", now: 0 }), view); // held clock: same object
   view = timerReducer(view, { type: "choose", mode: "shortBreak" });
   assert.equal(view.announcement, "Short break selected, 05:00.");
-  view = timerReducer(view, { type: "toggle" });
+  view = timerReducer(view, { type: "toggle", now: 0 });
   assert.equal(view.timer.active, true);
-  const ticked = timerReducer(view, { type: "tick" });
+  assert.equal(view.endsAt, 300_000);
+  assert.equal(view.announcement, ""); // Start clears it
+  const ticked = timerReducer(view, { type: "tick", now: 1000 });
   assert.equal(ticked.timer.remaining, 299);
-  assert.equal(ticked.announcement, view.announcement);
-  const ended = timerReducer({ ...view, timer: { ...view.timer, remaining: 1 } }, { type: "tick" });
+  assert.equal(timerReducer(ticked, { type: "tick", now: 1500 }), ticked); // same second: same object
+  const ended = timerReducer(view, { type: "tick", now: 300_000 });
   assert.equal(ended.finished, "shortBreak");
   assert.equal(ended.timer.mode, "work");
   assert.match(ended.announcement, /^Short break finished\. Focus is ready, 25:00\./);
   assert.equal(timerReducer(ended, { type: "reset" }).finished, null);
-  assert.equal(timerReducer(ended, { type: "toggle" }).finished, null);
+  assert.equal(timerReducer(ended, { type: "toggle", now: 0 }).finished, null);
 });
 
 test("the tab title shows time left while running and time is up after a round", () => {
@@ -78,8 +80,24 @@ test("start, pause and reset clear the announcement; picking the same mode says 
   assert.notEqual(again.announcement, view.announcement);
   assert.equal(again.announcement.trim(), "Focus selected, 25:00.");
   assert.equal(timerReducer(again, { type: "choose", mode: "work" }).announcement, "Focus selected, 25:00.");
-  view = timerReducer({ ...view, timer: { ...view.timer, active: true, remaining: 1 } }, { type: "tick" });
+  view = timerReducer(timerReducer(view, { type: "toggle", now: 0 }), { type: "tick", now: 1_500_000 });
   assert.match(view.announcement, /Press Start/);
-  assert.equal(timerReducer(view, { type: "toggle" }).announcement, "");
+  assert.equal(timerReducer(view, { type: "toggle", now: 0 }).announcement, "");
   assert.equal(timerReducer(view, { type: "reset" }).announcement, "");
+});
+
+test("time left comes from the wall clock, so late or missing ticks cannot drift", () => {
+  let view = timerReducer(initialView(), { type: "toggle", now: 10_000 });
+  view = timerReducer(view, { type: "tick", now: 10_000 + 7 * 60_000 + 400 }); // one tick after 7 minutes
+  assert.equal(view.timer.remaining, 18 * 60);
+  view = timerReducer(view, { type: "toggle", now: 10_000 + 8 * 60_000 }); // pause keeps the wall-clock time left
+  assert.deepEqual([view.timer.active, view.timer.remaining, view.endsAt], [false, 17 * 60, null]);
+  view = timerReducer(view, { type: "tick", now: 10_000 + 60 * 60_000 }); // paused: nothing moves
+  assert.equal(view.timer.remaining, 17 * 60);
+  view = timerReducer(view, { type: "toggle", now: 1_000_000 });
+  const late = timerReducer(view, { type: "tick", now: 1_000_000 + 3 * 60 * 60_000 }); // hours late
+  assert.deepEqual(late.timer, { mode: "shortBreak", remaining: 300, active: false, sessions: 1 });
+  assert.equal(late.finished, "work");
+  const pausedLate = timerReducer(view, { type: "toggle", now: 1_000_000 + 99 * 60_000 });
+  assert.equal(pausedLate.timer.remaining, 1); // pausing after the end keeps one second for the tick to finish
 });

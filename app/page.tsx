@@ -14,8 +14,14 @@ export default function Home() {
 
   useEffect(() => {
     if (!active) return;
-    const interval = window.setInterval(() => dispatch({ type: "tick" }), 1000);
-    return () => window.clearInterval(interval);
+    // Ticks only re-read the wall clock; a tab coming back into view catches up at once.
+    const tick = () => dispatch({ type: "tick", now: Date.now() });
+    const interval = window.setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", tick);
+    };
   }, [active]);
 
   // The tab title is the end-of-round signal: time left while running, "Time is up" after a round.
@@ -62,7 +68,7 @@ export default function Home() {
             <span style={{ width: `${progress}%` }} />
           </div>
           <div className="pt-actions">
-            <button type="button" className="as-button pt-start" onClick={() => dispatch({ type: "toggle" })}>
+            <button type="button" className="as-button pt-start" onClick={() => dispatch({ type: "toggle", now: Date.now() })}>
               {active ? "Pause" : remaining === duration ? "Start" : "Resume"}
             </button>
             <button type="button" className="as-plain" onClick={() => dispatch({ type: "reset" })}>Reset</button>
