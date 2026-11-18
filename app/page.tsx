@@ -25,7 +25,9 @@ export default function Home() {
   }, [title]);
   useEffect(() => () => { document.title = SITE_TITLE; }, []);
 
-  const percent = Math.round(((duration - remaining) / duration) * 100);
+  // The real share for the bar and aria-valuenow; the words round down, so they never say 100% while time is left.
+  const progress = ((duration - remaining) / duration) * 100;
+  const percentText = Math.floor(progress);
   const marks = sessions % LONG_BREAK_EVERY;
 
   return (
@@ -33,7 +35,7 @@ export default function Home() {
       <a className="as-skip" href="#timer">Skip to timer</a>
       <AppTop name="Pomodoro" tagline="Focus and break timer" />
 
-      <main id="timer" className="pt-body">
+      <main id="timer" className="pt-body as-skip-target">
         <h1 className="as-sr">Pomodoro timer</h1>
         <div className="as-segmented pt-modes" role="group" aria-label="Timer mode">
           {MODE_ORDER.map((item) => (
@@ -54,10 +56,10 @@ export default function Home() {
             aria-label={`${MODES[mode].label} progress`}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-valuenow={percent}
-            aria-valuetext={`${percent}% done, ${clock(remaining)} left of ${clock(duration)}`}
+            aria-valuenow={progress}
+            aria-valuetext={`${percentText}% done, ${clock(remaining)} left of ${clock(duration)}`}
           >
-            <span style={{ width: `${percent}%` }} />
+            <span style={{ width: `${progress}%` }} />
           </div>
           <div className="pt-actions">
             <button type="button" className="as-button pt-start" onClick={() => dispatch({ type: "toggle" })}>

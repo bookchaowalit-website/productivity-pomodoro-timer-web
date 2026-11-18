@@ -17,6 +17,7 @@ shell is copied in, not installed: take `app/app-shell.css` and `components/app-
 - **Empty states say what to do next**, and differ for "nothing yet" and "nothing matches".
 - **Floor:** text ≥ 12px, controls ≥ 44px, 3px focus ring, 4.5:1 contrast in light and dark
   (placeholders included), 3:1 for input edges (--as-field-line), no horizontal scroll at 320px.
+- **Skip link target** gets `as-skip-target` (scroll-margin-top 64px) so it lands below the sticky top bar.
 
 A single-tool app (this Pomodoro timer, 2026-11-18) keeps the tokens, top bar, segmented control, buttons and
 footer but skips the sidebar and rows: one centred column with the mode control above the clock. In this copy every

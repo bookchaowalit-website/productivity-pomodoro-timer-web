@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Post-deploy smoke check of the production site (read-only GETs).
 # Usage: scripts/deploy-smoke.sh <base-url> [expected-commit]
-# 1. The home page answers 200 and shows HOME_MARKER.
-# 2. The build marker (HEALTH_PATH) reports the expected commit. Retried while Vercel moves the
+# 1. The build marker (HEALTH_PATH) reports the expected commit. Retried while Vercel moves the
 #    production alias; without an expected commit it only has to report one.
+# 2. The home page answers 200 and shows HOME_MARKER.
 # 3. MAIN_ROUTE answers 200 and shows MAIN_MARKER.
 set -euo pipefail
 
@@ -40,8 +40,6 @@ page() {
   fi
 }
 
-page / "$HOME_MARKER"
-
 commit=""
 for attempt in $(seq 1 "$ATTEMPTS"); do
   code=$(get "$HEALTH_PATH?smoke=$(date +%s)")
@@ -60,6 +58,9 @@ else
   fail=1
 fi
 
+# Pages are checked only after the build marker confirms the expected commit, so an old
+# deployment still on the alias cannot fail (or pass) the marker checks.
+page / "$HOME_MARKER"
 page "$MAIN_ROUTE" "$MAIN_MARKER"
 
 exit "$fail"

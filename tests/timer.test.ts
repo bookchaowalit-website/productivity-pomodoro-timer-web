@@ -70,3 +70,16 @@ test("the tab title shows time left while running and time is up after a round",
   assert.equal(tabTitle({ ...base, timer: { ...base.timer, active: true, remaining: 61 } }, "T"), "01:01 Focus · T");
   assert.equal(tabTitle({ ...base, finished: "work" }, "T"), "Time is up: Focus done · T");
 });
+
+test("start, pause and reset clear the announcement; picking the same mode says it again", () => {
+  let view = timerReducer(initialView(), { type: "choose", mode: "work" });
+  assert.equal(view.announcement, "Focus selected, 25:00.");
+  const again = timerReducer(view, { type: "choose", mode: "work" });
+  assert.notEqual(again.announcement, view.announcement);
+  assert.equal(again.announcement.trim(), "Focus selected, 25:00.");
+  assert.equal(timerReducer(again, { type: "choose", mode: "work" }).announcement, "Focus selected, 25:00.");
+  view = timerReducer({ ...view, timer: { ...view.timer, active: true, remaining: 1 } }, { type: "tick" });
+  assert.match(view.announcement, /Press Start/);
+  assert.equal(timerReducer(view, { type: "toggle" }).announcement, "");
+  assert.equal(timerReducer(view, { type: "reset" }).announcement, "");
+});

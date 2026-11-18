@@ -3,7 +3,7 @@
 A client-side Pomodoro focus clock: Focus (25 min), Short break (5 min) and Long break (15 min), with start/pause/reset
 and an in-memory count of completed focus sessions. Every fourth completed focus opens a long break.
 
-The page uses the shared App shell look (Inter, light and dark from the system setting); see `APP-SHELL.md` and
+The page uses the shared App shell look (Geist Sans, light and dark from the system setting); see `APP-SHELL.md` and
 `DESIGN.md`. While the clock runs, the tab title shows the time left; after a round it reads "Time is up".
 
 Live: https://pomodoro-timer.bookchaowalit.com (Vercel deploys `main` through its Git integration;

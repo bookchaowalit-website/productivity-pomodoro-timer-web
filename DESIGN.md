@@ -22,7 +22,7 @@ All colours are `--as-*` tokens on `:root` in `app/app-shell.css`, redefined for
 
 ## Typography
 
-Inter, loaded as a font file through `next/font` and set on `<html>`. The clock uses tabular numerals so the digits do
+Geist Sans (like the sibling App shell apps), loaded as a font file through `next/font` and set on `<html>`. The clock uses tabular numerals so the digits do
 not jump. No text is smaller than 12px.
 
 ## Layout

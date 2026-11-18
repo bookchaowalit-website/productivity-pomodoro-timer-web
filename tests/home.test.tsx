@@ -12,6 +12,9 @@ describe("home page (server render)", () => {
     expect(html.indexOf('aria-label="Timer mode"')).toBeLessThan(html.indexOf('role="timer"'));
     expect(html).toContain(">25:00<");
     expect(html).toContain('href="https://bookchaowalit.com/"');
+    expect(html).toMatch(/<main id="timer" class="[^"]*as-skip-target/);
+    expect(readFileSync("app/app-shell.css", "utf8")).toMatch(/\.as-skip-target \{ scroll-margin-top: 64px; \}/);
+    expect(readFileSync("app/layout.tsx", "utf8")).toContain('Geist({ variable: "--font-geist-sans"');
     expect(html).not.toMatch(/FOCUS \/ FOLD|NO ALERTS|crease/i);
   });
 

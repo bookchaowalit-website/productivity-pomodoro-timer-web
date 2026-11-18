@@ -47,6 +47,17 @@ describe("modes", () => {
     seconds(5);
     expect(clockText()).toBe("15:00");
   });
+
+  it("re-selecting the running mode resets it and announces it again", () => {
+    press(button("Start"));
+    seconds(4);
+    expect(status()).toBe("");
+    press(button("Focus"));
+    expect(clockText()).toBe("25:00");
+    expect(status()).toBe("Focus selected, 25:00.");
+    press(button("Focus")); // same message twice: the text still changes, so it is read again
+    expect(status()).toBe("Focus selected, 25:00.\u00a0");
+  });
 });
 
 describe("start, pause, reset", () => {
@@ -75,6 +86,10 @@ describe("start, pause, reset", () => {
     seconds(150);
     expect(bar().getAttribute("aria-valuenow")).toBe("50");
     expect(bar().getAttribute("aria-valuetext")).toBe("50% done, 02:30 left of 05:00");
+    seconds(148); // 2 seconds left
+    expect(Number(bar().getAttribute("aria-valuenow"))).toBeLessThan(100);
+    expect(bar().getAttribute("aria-valuetext")).toBe("99% done, 00:02 left of 05:00");
+    expect(bar().querySelector("span")!.style.width).not.toBe("100%");
   });
 });
 
@@ -92,6 +107,7 @@ describe("end of a round", () => {
     expect(clockText()).toBe("05:00"); // holds until the person starts the break
     press(button("Start"));
     expect(document.title).toBe(`05:00 Short break · ${SITE_TITLE}`);
+    expect(status()).toBe(""); // the old "press Start" message is gone once the break runs
   });
 
   it("restores the site title when the page goes away", () => {

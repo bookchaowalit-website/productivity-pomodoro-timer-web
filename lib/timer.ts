@@ -43,6 +43,14 @@ export function initialView(): TimerView {
   return { timer: initialTimer(), announcement: "", finished: null };
 }
 
+/**
+ * A live region only speaks when its text changes, so the same message twice in a row (picking
+ * the mode that is already selected) gets a trailing no-break space to be read again.
+ */
+function fresh(previous: string, message: string): string {
+  return previous === message ? `${message}\u00a0` : message;
+}
+
 export function timerReducer(view: TimerView, action: TimerAction): TimerView {
   switch (action.type) {
     case "tick": {
@@ -53,16 +61,17 @@ export function timerReducer(view: TimerView, action: TimerAction): TimerView {
       return {
         timer,
         finished: ended,
-        announcement: `${MODES[ended].label} finished. ${MODES[timer.mode].label} is ready, ${clock(timer.remaining)}. Press Start when you are.`,
+        announcement: fresh(view.announcement, `${MODES[ended].label} finished. ${MODES[timer.mode].label} is ready, ${clock(timer.remaining)}. Press Start when you are.`),
       };
     }
+    // Start, Pause and Reset are not announced; they clear an old "press Start" message.
     case "toggle":
-      return { ...view, timer: { ...view.timer, active: !view.timer.active }, finished: null };
+      return { timer: { ...view.timer, active: !view.timer.active }, finished: null, announcement: "" };
     case "reset":
-      return { ...view, timer: resetTimer(view.timer), finished: null };
+      return { timer: resetTimer(view.timer), finished: null, announcement: "" };
     case "choose": {
       const timer = chooseMode(view.timer, action.mode);
-      return { timer, finished: null, announcement: `${MODES[action.mode].label} selected, ${clock(timer.remaining)}.` };
+      return { timer, finished: null, announcement: fresh(view.announcement, `${MODES[action.mode].label} selected, ${clock(timer.remaining)}.`) };
     }
   }
 }
