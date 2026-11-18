@@ -185,3 +185,6 @@
 .as-composer-grid > .as-field:first-child { grid-column: 1 / -1; }
 .as-composer-grid input { min-width: 0; }
 @media (max-width: 760px) { .as-composer-grid { grid-template-columns: 1fr; } .as-composer-grid .as-button { width: 100%; } }
+
+/* The top bar is sticky: keep skip-link targets and keyboard-focused controls clear of it when the page scrolls to them. */
+html { scroll-padding-top: 64px; scroll-padding-bottom: 16px; }
