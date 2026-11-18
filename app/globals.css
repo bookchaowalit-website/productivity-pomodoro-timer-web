@@ -36,4 +36,9 @@ html, body { margin: 0; background: var(--as-bg); }
   .pt-modes button { padding: 0 6px; font-size: 14px; }
   .pt-marks li { gap: 6px; font-size: 13px; }
 }
+/* Forced colors flatten both backgrounds to Canvas: outline the track and keep the fill in Highlight. */
+@media (forced-colors: active) {
+  .pt-progress { border: 1px solid CanvasText; background: Canvas; }
+  .pt-progress span { forced-color-adjust: none; background: Highlight; }
+}
 @media (prefers-reduced-motion: reduce) { .pt-progress span { transition: none; } }

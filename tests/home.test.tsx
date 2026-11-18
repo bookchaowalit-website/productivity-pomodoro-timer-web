@@ -21,6 +21,13 @@ describe("home page (server render)", () => {
     expect(html).not.toMatch(/FOCUS \/ FOLD|NO ALERTS|crease/i);
   });
 
+  it("keeps the progress bar visible in forced colors", () => {
+    const css = readFileSync("app/globals.css", "utf8");
+    const block = css.slice(css.indexOf("@media (forced-colors: active)"));
+    expect(block).toMatch(/\.pt-progress \{[^}]*border: 1px solid CanvasText/);
+    expect(block).toMatch(/\.pt-progress span \{[^}]*forced-color-adjust: none;[^}]*background: Highlight/);
+  });
+
   it("keeps the forced-colors focus ring distinct from the selected-mode marker", () => {
     const css = readFileSync("app/app-shell.css", "utf8");
     const block = css.slice(css.indexOf("@media (forced-colors: active)"));

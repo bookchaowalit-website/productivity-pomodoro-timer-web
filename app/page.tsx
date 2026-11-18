@@ -24,6 +24,18 @@ export default function Home() {
     };
   }, [active]);
 
+  // A one-shot timeout at the deadline ends the round even when a hidden tab throttles the
+  // interval above to about once a minute, so the "Time is up" title is not left waiting.
+  const { endsAt } = view;
+  useEffect(() => {
+    if (endsAt === null) return;
+    const timeout = window.setTimeout(
+      () => dispatch({ type: "tick", now: performance.now() }),
+      Math.max(0, endsAt - performance.now()) + 20,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [endsAt]);
+
   // The tab title is the end-of-round signal: time left while running, "Time is up" after a round.
   const title = tabTitle(view, SITE_TITLE);
   useEffect(() => {
@@ -32,7 +44,7 @@ export default function Home() {
   useEffect(() => () => { document.title = SITE_TITLE; }, []);
 
   // The real share for the bar and aria-valuenow; the words round down, so they never say 100% while time is left.
-  const progress = ((duration - remaining) / duration) * 100;
+  const progress = ((duration - remaining) * 100) / duration; // multiply first: 87/300 s is exactly 29
   const percentText = Math.floor(progress);
   const marks = sessions % LONG_BREAK_EVERY;
 

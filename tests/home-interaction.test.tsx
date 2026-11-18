@@ -23,7 +23,7 @@ const status = () => $('[role="status"]').textContent;
 const pressed = () => [...host.querySelectorAll('[aria-label="Timer mode"] button[aria-pressed="true"]')].map((b) => b.textContent);
 
 beforeEach(() => {
-  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout", "Date"] });
   perf = 0;
   vi.spyOn(performance, "now").mockImplementation(() => perf);
   document.title = SITE_TITLE;
@@ -111,6 +111,38 @@ describe("a throttled background tab", () => {
     seconds(1); // a single late tick still ends the round on time
     expect(document.title).toBe(`Time is up: Focus done · ${SITE_TITLE}`);
     expect(pressed()).toEqual(["Short break"]);
+  });
+});
+
+describe("deadline timeout", () => {
+  it("ends the round at the deadline even when the interval never fires", () => {
+    act(() => root.unmount());
+    // A throttled hidden tab: the display interval is starved, only the one-shot timeout runs.
+    vi.spyOn(window, "setInterval").mockImplementation(() => 0 as unknown as ReturnType<typeof setInterval>);
+    root = createRoot(host);
+    act(() => root.render(<Home />));
+    press(button("Start"));
+    seconds(25 * 60 - 1);
+    expect(document.title).toBe(`25:00 Focus · ${SITE_TITLE}`);
+    seconds(1.02); // the deadline plus the timeout's 20 ms of slack
+    expect(document.title).toBe(`Time is up: Focus done · ${SITE_TITLE}`);
+    expect(pressed()).toEqual(["Short break"]);
+  });
+
+  it("drops the timeout when paused", () => {
+    press(button("Start"));
+    seconds(5);
+    press(button("Pause"));
+    seconds(25 * 60);
+    expect(clockText()).toBe("24:55");
+    expect(button("Resume")).toBeTruthy();
+  });
+
+  it("reports an exact percentage (87 s of a 5 min break is 29%)", () => {
+    press(button("Short break"));
+    press(button("Start"));
+    seconds(87);
+    expect(bar().getAttribute("aria-valuetext")).toBe("29% done, 03:33 left of 05:00");
   });
 });
 
