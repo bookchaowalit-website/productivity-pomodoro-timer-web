@@ -43,7 +43,7 @@ export type TimerView = { timer: TimerState; announcement: string; finished: Mod
  * tick derives the time left from it instead of counting interval callbacks: a background tab
  * throttles setInterval, so counting would lag and "Time is up" could come minutes late.
  */
-export type TimerAction = { type: "tick"; now: number } | { type: "toggle"; now: number } | { type: "reset" } | { type: "choose"; mode: Mode };
+export type TimerAction = { type: "tick"; now: number } | { type: "toggle"; now: number } | { type: "reset"; now: number } | { type: "choose"; mode: Mode; now: number };
 
 export function initialView(): TimerView {
   return { timer: initialTimer(), announcement: "", finished: null, endsAt: null };
@@ -73,6 +73,10 @@ function finishRound(view: TimerView): TimerView {
   };
 }
 
+function timeIsUp(view: TimerView, now: number): boolean {
+  return view.timer.active && view.endsAt !== null && secondsLeft(view.endsAt, now) === 0;
+}
+
 export function timerReducer(view: TimerView, action: TimerAction): TimerView {
   switch (action.type) {
     case "tick": {
@@ -93,11 +97,16 @@ export function timerReducer(view: TimerView, action: TimerAction): TimerView {
       }
       return { timer: { ...view.timer, active: true }, endsAt: action.now + view.timer.remaining * 1000, finished: null, announcement: "" };
     }
-    case "reset":
-      return { timer: resetTimer(view.timer), endsAt: null, finished: null, announcement: "" };
+    // Reset and mode picks first end a round whose time already ran out, so a finished focus block
+    // is still counted, then act on the state that follows.
+    case "reset": {
+      const current = timeIsUp(view, action.now) ? finishRound(view) : view;
+      return { timer: resetTimer(current.timer), endsAt: null, finished: null, announcement: "" };
+    }
     case "choose": {
-      const timer = chooseMode(view.timer, action.mode);
-      return { timer, endsAt: null, finished: null, announcement: fresh(view.announcement, `${MODES[action.mode].label} selected, ${clock(timer.remaining)}.`) };
+      const current = timeIsUp(view, action.now) ? finishRound(view) : view;
+      const timer = chooseMode(current.timer, action.mode);
+      return { timer, endsAt: null, finished: null, announcement: fresh(current.announcement, `${MODES[action.mode].label} selected, ${clock(timer.remaining)}.`) };
     }
   }
 }

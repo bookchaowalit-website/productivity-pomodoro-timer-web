@@ -138,6 +138,24 @@ describe("clock changes and late pauses", () => {
   });
 });
 
+describe("late Reset or mode pick", () => {
+  it("counts the focus block whose time ran out before the tick", () => {
+    press(button("Start"));
+    jump(25 * 60_000 + 200);
+    press(button("Long break"));
+    expect(pressed()).toEqual(["Long break"]);
+    expect(host.textContent).toContain("1 focus block completed in this visit.");
+  });
+
+  it("Reset after the end counts the block too", () => {
+    press(button("Start"));
+    jump(25 * 60_000 + 200);
+    press(button("Reset"));
+    expect(host.textContent).toContain("1 focus block completed in this visit.");
+    expect(clockText()).toBe("05:00");
+  });
+});
+
 describe("end of a round", () => {
   it("moves to the break, marks the session, says time is up in the title and the live region", () => {
     press(button("Start"));

@@ -49,7 +49,7 @@ test("reset holds the current mode and preserves session count", () => {
 test("the page reducer announces mode changes and round ends, never plain ticks", () => {
   let view = initialView();
   assert.equal(timerReducer(view, { type: "tick", now: 0 }), view); // held clock: same object
-  view = timerReducer(view, { type: "choose", mode: "shortBreak" });
+  view = timerReducer(view, { type: "choose", mode: "shortBreak", now: 0 });
   assert.equal(view.announcement, "Short break selected, 05:00.");
   view = timerReducer(view, { type: "toggle", now: 0 });
   assert.equal(view.timer.active, true);
@@ -62,7 +62,7 @@ test("the page reducer announces mode changes and round ends, never plain ticks"
   assert.equal(ended.finished, "shortBreak");
   assert.equal(ended.timer.mode, "work");
   assert.match(ended.announcement, /^Short break finished\. Focus is ready, 25:00\./);
-  assert.equal(timerReducer(ended, { type: "reset" }).finished, null);
+  assert.equal(timerReducer(ended, { type: "reset", now: 0 }).finished, null);
   assert.equal(timerReducer(ended, { type: "toggle", now: 0 }).finished, null);
 });
 
@@ -74,16 +74,16 @@ test("the tab title shows time left while running and time is up after a round",
 });
 
 test("start, pause and reset clear the announcement; picking the same mode says it again", () => {
-  let view = timerReducer(initialView(), { type: "choose", mode: "work" });
+  let view = timerReducer(initialView(), { type: "choose", mode: "work", now: 0 });
   assert.equal(view.announcement, "Focus selected, 25:00.");
-  const again = timerReducer(view, { type: "choose", mode: "work" });
+  const again = timerReducer(view, { type: "choose", mode: "work", now: 0 });
   assert.notEqual(again.announcement, view.announcement);
   assert.equal(again.announcement.trim(), "Focus selected, 25:00.");
-  assert.equal(timerReducer(again, { type: "choose", mode: "work" }).announcement, "Focus selected, 25:00.");
+  assert.equal(timerReducer(again, { type: "choose", mode: "work", now: 0 }).announcement, "Focus selected, 25:00.");
   view = timerReducer(timerReducer(view, { type: "toggle", now: 0 }), { type: "tick", now: 1_500_000 });
   assert.match(view.announcement, /Press Start/);
   assert.equal(timerReducer(view, { type: "toggle", now: 0 }).announcement, "");
-  assert.equal(timerReducer(view, { type: "reset" }).announcement, "");
+  assert.equal(timerReducer(view, { type: "reset", now: 0 }).announcement, "");
 });
 
 test("time left comes from the clock reading, so late or missing ticks cannot drift", () => {
@@ -107,4 +107,17 @@ test("time left comes from the clock reading, so late or missing ticks cannot dr
   assert.equal(pausedExact.timer.sessions, 1);
   const pausedBefore = timerReducer(view, { type: "toggle", now: 1_000_000 + 17 * 60_000 - 1 });
   assert.deepEqual([pausedBefore.timer.mode, pausedBefore.timer.remaining, pausedBefore.timer.sessions], ["work", 1, 0]);
+});
+
+test("Reset or a mode pick after time ran out (before a tick) still counts the finished round", () => {
+  const running = timerReducer(initialView(), { type: "toggle", now: 0 });
+  const end = 25 * 60_000;
+  const reset = timerReducer(running, { type: "reset", now: end + 10 });
+  assert.deepEqual(reset.timer, { mode: "shortBreak", remaining: 300, active: false, sessions: 1 });
+  const picked = timerReducer(running, { type: "choose", mode: "work", now: end + 10 });
+  assert.deepEqual(picked.timer, { mode: "work", remaining: 1500, active: false, sessions: 1 });
+  assert.equal(picked.announcement, "Focus selected, 25:00.");
+  // Before the end nothing is counted.
+  assert.equal(timerReducer(running, { type: "reset", now: end - 1 }).timer.sessions, 0);
+  assert.equal(timerReducer(running, { type: "choose", mode: "longBreak", now: end - 1 }).timer.sessions, 0);
 });

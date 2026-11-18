@@ -45,7 +45,7 @@ export default function Home() {
         <h1 className="as-sr">Pomodoro timer</h1>
         <div className="as-segmented pt-modes" role="group" aria-label="Timer mode">
           {MODE_ORDER.map((item) => (
-            <button type="button" key={item} aria-pressed={mode === item} onClick={() => dispatch({ type: "choose", mode: item })}>
+            <button type="button" key={item} aria-pressed={mode === item} onClick={() => dispatch({ type: "choose", mode: item, now: performance.now() })}>
               {MODES[item].label}
             </button>
           ))}
@@ -71,7 +71,7 @@ export default function Home() {
             <button type="button" className="as-button pt-start" onClick={() => dispatch({ type: "toggle", now: performance.now() })}>
               {active ? "Pause" : remaining === duration ? "Start" : "Resume"}
             </button>
-            <button type="button" className="as-plain" onClick={() => dispatch({ type: "reset" })}>Reset</button>
+            <button type="button" className="as-plain" onClick={() => dispatch({ type: "reset", now: performance.now() })}>Reset</button>
           </div>
         </section>
 

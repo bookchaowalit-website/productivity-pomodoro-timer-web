@@ -16,6 +16,7 @@ describe("home page (server render)", () => {
     expect(readFileSync("app/app-shell.css", "utf8")).toMatch(/\.as-skip-target \{ scroll-margin-top: 64px; \}/);
     expect(readFileSync("scripts/deploy-smoke.sh", "utf8")).toContain(`HOME_MARKER='role="timer"'`);
     expect(readFileSync("app/app-shell.css", "utf8")).toMatch(/aria-pressed="true"\] \{[^}]*inset 0 -3px 0 var\(--as-accent\)/);
+    expect(readFileSync("app/app-shell.css", "utf8")).toMatch(/@media \(forced-colors: active\) \{\s*\.as-segmented button\[aria-pressed="true"\] \{ border-bottom: 3px solid Highlight;/);
     expect(readFileSync("app/layout.tsx", "utf8")).toContain('Geist({ variable: "--font-geist-sans"');
     expect(html).not.toMatch(/FOCUS \/ FOLD|NO ALERTS|crease/i);
   });
