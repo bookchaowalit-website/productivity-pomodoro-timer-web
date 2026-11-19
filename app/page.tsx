@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { AppFoot, AppTop } from "@/components/app-shell";
 import { SITE_TITLE, SOURCE_URL } from "@/lib/site";
-import { LONG_BREAK_EVERY, MODES, clock, initialView, tabTitle, timerReducer, type Mode } from "@/lib/timer";
+import { LONG_BREAK_EVERY, MODES, clock, cycleMarks, finishedLine, initialView, interruptedRound, tabTitle, timerReducer, type Mode, type TimerState } from "@/lib/timer";
 
 const MODE_ORDER = Object.keys(MODES) as Mode[];
 
@@ -11,6 +11,31 @@ export default function Home() {
   const [view, dispatch] = useReducer(timerReducer, undefined, initialView);
   const { mode, remaining, active, sessions } = view.timer;
   const duration = MODES[mode].duration;
+  // A Reset or mode pick that threw away a started round, kept for a few seconds so Undo can bring it back.
+  const [undoRound, setUndoRound] = useState<TimerState | null>(null);
+  const [toastHeld, setToastHeld] = useState({ hover: false, focus: false });
+  const held = toastHeld.hover || toastHeld.focus;
+
+  useEffect(() => {
+    if (!undoRound || held) return;
+    const timer = window.setTimeout(() => setUndoRound(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [undoRound, held]);
+
+  // Reset and mode picks stay one tap, but a started round they clear can be undone.
+  function clearing(action: { type: "reset"; now: number } | { type: "choose"; mode: Mode; now: number }) {
+    const { now } = action;
+    const lost = interruptedRound(view, now);
+    dispatch(action);
+    setUndoRound(lost);
+    setToastHeld({ hover: false, focus: false });
+  }
+  function undo() {
+    if (!undoRound) return;
+    dispatch({ type: "restore", timer: undoRound });
+    setUndoRound(null);
+    setToastHeld({ hover: false, focus: false });
+  }
 
   useEffect(() => {
     if (!active) return;
@@ -46,10 +71,12 @@ export default function Home() {
   // The real share for the bar and aria-valuenow; the words round down, so they never say 100% while time is left.
   const progress = ((duration - remaining) * 100) / duration; // multiply first: 87/300 s is exactly 29
   const percentText = Math.floor(progress);
-  const marks = sessions % LONG_BREAK_EVERY;
+  const marks = cycleMarks(view.timer);
+  const done = finishedLine(view);
+  const ready = !active && remaining === duration;
 
   return (
-    <div className="as">
+    <div className="as pt-app">
       <a className="as-skip" href="#timer">Skip to timer</a>
       <AppTop name="Pomodoro" tagline="Focus and break timer" />
 
@@ -57,15 +84,16 @@ export default function Home() {
         <h1 className="as-sr">Pomodoro timer</h1>
         <div className="as-segmented pt-modes" role="group" aria-label="Timer mode">
           {MODE_ORDER.map((item) => (
-            <button type="button" key={item} aria-pressed={mode === item} onClick={() => dispatch({ type: "choose", mode: item, now: performance.now() })}>
+            <button type="button" key={item} aria-pressed={mode === item} onClick={() => clearing({ type: "choose", mode: item, now: performance.now() })}>
               {MODES[item].label}
             </button>
           ))}
         </div>
 
         <section className="pt-card" aria-label={`${MODES[mode].label} timer`}>
+          {done ? <p className="pt-done">{done}</p> : null}
           <p className="pt-mode">
-            <strong>{MODES[mode].label}</strong> · {duration / 60} min · {active ? "running" : remaining === duration ? "ready" : "paused"}
+            <strong>{MODES[mode].label}</strong> · {duration / 60} min · {active ? "running" : ready ? "ready" : "paused"}
           </p>
           <p className="pt-clock" role="timer">{clock(remaining)}</p>
           <div
@@ -80,10 +108,11 @@ export default function Home() {
             <span style={{ width: `${progress}%` }} />
           </div>
           <div className="pt-actions">
-            <button type="button" className="as-button pt-start" onClick={() => dispatch({ type: "toggle", now: performance.now() })}>
-              {active ? "Pause" : remaining === duration ? "Start" : "Resume"}
+            <button type="button" className="as-button pt-start" onClick={() => { setUndoRound(null); dispatch({ type: "toggle", now: performance.now() }); }}>
+              {active ? "Pause" : ready ? "Start" : "Resume"}
             </button>
-            <button type="button" className="as-plain" onClick={() => dispatch({ type: "reset", now: performance.now() })}>Reset</button>
+            {/* Nothing to reset while the round has not started: aria-disabled keeps focus on the button after a Reset. */}
+            <button type="button" className="as-plain pt-reset" aria-disabled={ready ? "true" : undefined} onClick={() => { if (!ready) clearing({ type: "reset", now: performance.now() }); }}>Reset</button>
           </div>
         </section>
 
@@ -105,6 +134,22 @@ export default function Home() {
         </section>
 
         <p className="as-sr" role="status" aria-live="polite">{view.announcement}</p>
+
+        {undoRound ? (
+          <div
+            className="as-toast"
+            role="group"
+            aria-label="Undo"
+            onMouseEnter={() => setToastHeld((h) => ({ ...h, hover: true }))}
+            onMouseLeave={() => setToastHeld((h) => ({ ...h, hover: false }))}
+            onFocus={() => setToastHeld((h) => ({ ...h, focus: true }))}
+            onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setToastHeld((h) => ({ ...h, focus: false })); }}
+            onKeyDown={(event) => { if (event.key === "Escape") setUndoRound(null); }}
+          >
+            <span>{MODES[undoRound.mode].label} cleared at {clock(undoRound.remaining)}</span>
+            <button type="button" className="as-plain" onClick={undo} aria-label={`Undo: bring back ${MODES[undoRound.mode].label} at ${clock(undoRound.remaining)}`}>Undo</button>
+          </div>
+        ) : null}
 
         <p className="as-note">
           Runs in this tab only. No sound, no notifications and no saved history: the count resets when you reload. While

@@ -214,3 +214,61 @@ describe("end of a round", () => {
     act(() => root.render(<Home />));
   });
 });
+
+describe("review 2026-11-18", () => {
+  const toast = () => host.querySelector(".as-toast");
+
+  it("Reset is aria-disabled while the round has not started, and does nothing", () => {
+    expect(button("Reset").getAttribute("aria-disabled")).toBe("true");
+    press(button("Reset"));
+    expect(toast()).toBeNull();
+    press(button("Start"));
+    seconds(3);
+    expect(button("Reset").getAttribute("aria-disabled")).toBeNull();
+  });
+
+  it("Reset during a round offers Undo, which brings the round back paused", () => {
+    press(button("Start"));
+    seconds(623);
+    press(button("Reset"));
+    expect(clockText()).toBe("25:00");
+    expect(toast()!.textContent).toContain("Focus cleared at 14:37");
+    press(host.querySelector<HTMLButtonElement>(".as-toast button")!);
+    expect(toast()).toBeNull();
+    expect(clockText()).toBe("14:37");
+    expect(button("Resume")).toBeTruthy();
+    expect(status()).toContain("Focus restored, 14:37 left, paused.");
+  });
+
+  it("a mode pick mid-round offers Undo; the toast waits while hovered and closes 6 s after", () => {
+    press(button("Start"));
+    seconds(10);
+    press(button("Short break"));
+    expect(toast()!.textContent).toContain("Focus cleared at 24:50");
+    act(() => { toast()!.dispatchEvent(new MouseEvent("mouseover", { bubbles: true, relatedTarget: document.body })); });
+    seconds(10);
+    expect(toast()).not.toBeNull();
+    act(() => { toast()!.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body })); });
+    seconds(6);
+    expect(toast()).toBeNull();
+  });
+
+  it("shows a visible done line after a round until the next press", () => {
+    press(button("Start"));
+    seconds(25 * 60);
+    expect($(".pt-done").textContent).toBe("Focus done — Short break is ready");
+    press(button("Start"));
+    expect(host.querySelector(".pt-done")).toBeNull();
+  });
+
+  it("keeps all four marks filled during the long break after the fourth focus block", () => {
+    for (let round = 0; round < 4; round += 1) {
+      if (!pressed().includes("Focus")) press(button("Focus"));
+      press(button("Start"));
+      seconds(25 * 60);
+    }
+    expect(pressed()).toEqual(["Long break"]);
+    expect([...host.querySelectorAll(".pt-marks li")].map((li) => li.textContent)).toEqual(["Done", "Done", "Done", "Done"]);
+    expect($(".pt-sessions p").textContent).toContain("4 of 4 focus blocks");
+  });
+});

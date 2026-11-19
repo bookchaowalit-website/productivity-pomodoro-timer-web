@@ -13,8 +13,13 @@ html, body { margin: 0; background: var(--as-bg); }
 .pt-mode strong { color: var(--as-fg); font-weight: 600; }
 .pt-clock { margin: 4px 0 16px; font-size: clamp(72px, 22vw, 120px); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.03em; line-height: 1.05; text-align: center; }
 /* The fill (--as-accent) is the informative part: 4.6:1 on the track in light, 5.4:1 in dark. */
-.pt-progress { height: 8px; overflow: hidden; border-radius: 980px; background: var(--as-selected); }
+/* The 1px --as-field-line edge (3.3:1+) shows the empty track at 0%, where the fill has nothing to show. */
+.pt-progress { height: 10px; overflow: hidden; border: 1px solid var(--as-field-line); border-radius: 980px; background: var(--as-selected); }
 .pt-progress span { display: block; height: 100%; border-radius: inherit; background: var(--as-accent); transition: width .3s linear; }
+/* After a round ends: says what finished until the next button press (the tab title says it too). */
+.pt-done { margin: 0 0 8px; color: var(--as-green); font-size: 15px; font-weight: 600; text-align: center; }
+.pt-reset[aria-disabled="true"] { color: var(--as-muted); cursor: default; }
+.pt-reset[aria-disabled="true"]:hover { background: transparent; }
 .pt-actions { display: flex; justify-content: center; gap: 8px; margin-top: 20px; }
 .pt-start { min-width: 140px; font-size: 17px; }
 .pt-sessions h2 { margin: 0 0 12px; font-size: 17px; font-weight: 600; }
@@ -42,3 +47,9 @@ html, body { margin: 0; background: var(--as-bg); }
   .pt-progress span { forced-color-adjust: none; background: Highlight; }
 }
 @media (prefers-reduced-motion: reduce) { .pt-progress span { transition: none; } }
+
+/* The footer lines up with the 640px column instead of the 1120px shell width. */
+.pt-app > .as-foot { width: min(640px, 100%); }
+/* While the Undo toast shows, leave room below the page so it never covers the footer or a focused control. */
+.pt-app:has(.as-toast) { padding-bottom: 88px; }
+html:has(.as-toast) { scroll-padding-bottom: 96px; }

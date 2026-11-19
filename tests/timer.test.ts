@@ -121,3 +121,31 @@ test("Reset or a mode pick after time ran out (before a tick) still counts the f
   assert.equal(timerReducer(running, { type: "reset", now: end - 1 }).timer.sessions, 0);
   assert.equal(timerReducer(running, { type: "choose", mode: "longBreak", now: end - 1 }).timer.sessions, 0);
 });
+
+test("cycleMarks keeps 4 of 4 during the long break a full cycle opened", async () => {
+  const { cycleMarks } = await import("../lib/timer.ts");
+  assert.equal(cycleMarks({ mode: "longBreak", remaining: 900, active: false, sessions: 4 }), 4);
+  assert.equal(cycleMarks({ mode: "work", remaining: 1500, active: false, sessions: 4 }), 0);
+  assert.equal(cycleMarks({ mode: "longBreak", remaining: 900, active: false, sessions: 0 }), 0);
+  assert.equal(cycleMarks({ mode: "shortBreak", remaining: 300, active: false, sessions: 3 }), 3);
+});
+
+test("interruptedRound returns the started round paused, and null when nothing would be lost", async () => {
+  const { interruptedRound } = await import("../lib/timer.ts");
+  const fresh = initialView();
+  assert.equal(interruptedRound(fresh, 0), null);
+  const running = timerReducer(fresh, { type: "toggle", now: 0 });
+  assert.deepEqual(interruptedRound(running, 623_000), { mode: "work", remaining: 877, active: false, sessions: 0 });
+  assert.equal(interruptedRound(running, 1_500_000), null); // time ran out: the round is counted, not lost
+  const restored = timerReducer(running, { type: "restore", timer: { mode: "work", remaining: 877, active: true, sessions: 0 } });
+  assert.deepEqual(restored.timer, { mode: "work", remaining: 877, active: false, sessions: 0 });
+  assert.equal(restored.endsAt, null);
+  assert.match(restored.announcement, /Focus restored, 14:37 left, paused/);
+});
+
+test("finishedLine names the round that ended and the one that is ready", async () => {
+  const { finishedLine } = await import("../lib/timer.ts");
+  assert.equal(finishedLine(initialView()), "");
+  const ended = timerReducer(timerReducer(initialView(), { type: "toggle", now: 0 }), { type: "tick", now: 1_500_000 });
+  assert.equal(finishedLine(ended), "Focus done — Short break is ready");
+});

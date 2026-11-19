@@ -8,7 +8,7 @@ describe("home page (server render)", () => {
   const html = renderToString(<Home />);
 
   it("renders the timer on the App shell, mode control before the clock", () => {
-    expect(html).toContain('class="as"');
+    expect(html).toContain('class="as pt-app"');
     expect(html.indexOf('aria-label="Timer mode"')).toBeLessThan(html.indexOf('role="timer"'));
     expect(html).toContain(">25:00<");
     expect(html).toContain('href="https://bookchaowalit.com/"');

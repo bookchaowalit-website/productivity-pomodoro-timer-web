@@ -43,7 +43,7 @@ export type TimerView = { timer: TimerState; announcement: string; finished: Mod
  * tick derives the time left from it instead of counting interval callbacks: a background tab
  * throttles setInterval, so counting would lag and "Time is up" could come minutes late.
  */
-export type TimerAction = { type: "tick"; now: number } | { type: "toggle"; now: number } | { type: "reset"; now: number } | { type: "choose"; mode: Mode; now: number };
+export type TimerAction = { type: "tick"; now: number } | { type: "toggle"; now: number } | { type: "reset"; now: number } | { type: "choose"; mode: Mode; now: number } | { type: "restore"; timer: TimerState };
 
 export function initialView(): TimerView {
   return { timer: initialTimer(), announcement: "", finished: null, endsAt: null };
@@ -108,7 +108,38 @@ export function timerReducer(view: TimerView, action: TimerAction): TimerView {
       const timer = chooseMode(current.timer, action.mode);
       return { timer, endsAt: null, finished: null, announcement: fresh(current.announcement, `${MODES[action.mode].label} selected, ${clock(timer.remaining)}.`) };
     }
+    // Undo of a Reset or mode pick: the round comes back paused where it was.
+    case "restore": {
+      const timer = { ...action.timer, active: false };
+      return { timer, endsAt: null, finished: null, announcement: fresh(view.announcement, `${MODES[timer.mode].label} restored, ${clock(timer.remaining)} left, paused.`) };
+    }
   }
+}
+
+/**
+ * The round a Reset or mode pick is about to throw away, paused at the time left now, or null when
+ * nothing would be lost (the round has not started, or its time already ran out and it is counted).
+ */
+export function interruptedRound(view: TimerView, now: number): TimerState | null {
+  if (timeIsUp(view, now)) return null;
+  const { timer } = view;
+  const remaining = timer.active && view.endsAt !== null ? secondsLeft(view.endsAt, now) : timer.remaining;
+  if (remaining >= MODES[timer.mode].duration) return null;
+  return { ...timer, active: false, remaining };
+}
+
+/**
+ * Filled session marks: focus blocks done in this cycle. During the long break that a full cycle
+ * opened, all marks stay filled (4 of 4) until the break ends, instead of dropping back to 0.
+ */
+export function cycleMarks(timer: TimerState): number {
+  const marks = timer.sessions % LONG_BREAK_EVERY;
+  return marks === 0 && timer.sessions > 0 && timer.mode === "longBreak" ? LONG_BREAK_EVERY : marks;
+}
+
+/** The visible line after a round ends: what finished and what is ready next. */
+export function finishedLine(view: TimerView): string {
+  return view.finished ? `${MODES[view.finished].label} done — ${MODES[view.timer.mode].label} is ready` : "";
 }
 
 /** Tab title: the time left while running, a plain "time is up" after a round, else the site title. */
