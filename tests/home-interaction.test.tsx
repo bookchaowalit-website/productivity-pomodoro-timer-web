@@ -49,7 +49,7 @@ describe("modes", () => {
     expect(pressed()).toEqual(["Long break"]);
     expect(clockText()).toBe("15:00");
     expect(button("Start")).toBeTruthy();
-    expect(status()).toBe("Long break selected, 15:00.");
+    expect(status()).toBe("Long break selected, 15:00. Focus round cleared at 24:57. Undo is available for a few seconds.");
     seconds(5);
     expect(clockText()).toBe("15:00");
   });
@@ -60,6 +60,8 @@ describe("modes", () => {
     expect(status()).toBe("");
     press(button("Focus"));
     expect(clockText()).toBe("25:00");
+    expect(status()).toBe("Focus selected, 25:00. Focus round cleared at 24:56. Undo is available for a few seconds.");
+    press(button("Focus")); // nothing started now, so the plain line
     expect(status()).toBe("Focus selected, 25:00.");
     press(button("Focus")); // same message twice: the text still changes, so it is read again
     expect(status()).toBe("Focus selected, 25:00.\u00a0");
@@ -240,6 +242,15 @@ describe("review 2026-11-18", () => {
     expect(status()).toContain("Focus restored, 14:37 left, paused.");
   });
 
+  it("Reset announces that the round was cleared and Undo is available, once", () => {
+    press(button("Start"));
+    seconds(623);
+    press(button("Reset"));
+    expect(status()).toBe("Focus round cleared at 14:37. Undo is available for a few seconds.");
+    seconds(2);
+    expect(status()).toBe("Focus round cleared at 14:37. Undo is available for a few seconds."); // no per-tick updates
+  });
+
   it("a mode pick mid-round offers Undo; the toast waits while hovered and closes 6 s after", () => {
     press(button("Start"));
     seconds(10);
@@ -270,5 +281,71 @@ describe("review 2026-11-18", () => {
     expect(pressed()).toEqual(["Long break"]);
     expect([...host.querySelectorAll(".pt-marks li")].map((li) => li.textContent)).toEqual(["Done", "Done", "Done", "Done"]);
     expect($(".pt-sessions p").textContent).toContain("4 of 4 focus blocks");
+  });
+});
+
+describe("deferred review 2026-11-19", () => {
+  const toast = () => host.querySelector(".as-toast");
+  const undoButton = () => host.querySelector<HTMLButtonElement>(".as-toast button")!;
+
+  it("a Pause click that lands after the visibility tick ended the round does not start the break", () => {
+    press(button("Start"));
+    const pause = button("Pause"); // the button the person sees and clicks
+    jump(25 * 60_000 + 300);
+    // Tick and click are processed in one batch, before React shows the new label.
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      pause.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(pressed()).toEqual(["Short break"]);
+    expect(clockText()).toBe("05:00");
+    expect(button("Start")).toBeTruthy();
+    seconds(5);
+    expect(clockText()).toBe("05:00"); // the break waits for Start
+  });
+
+  it("picking a mode that has not started keeps the earlier Undo and its deadline", () => {
+    press(button("Start"));
+    seconds(10);
+    press(button("Short break")); // clears the running focus block: Undo appears
+    seconds(3);
+    press(button("Focus")); // the short break never started: nothing new is lost
+    expect(toast()!.textContent).toContain("Focus cleared at 24:50");
+    seconds(3); // 6 s after the first clear, not after the second pick
+    expect(toast()).toBeNull();
+  });
+
+  it("returns focus to the timer button after Undo or Escape from inside the toast", () => {
+    press(button("Start"));
+    seconds(5);
+    press(button("Reset"));
+    act(() => { undoButton().focus(); });
+    press(undoButton());
+    expect(document.activeElement).toBe(button("Resume"));
+    press(button("Reset"));
+    act(() => { undoButton().focus(); });
+    act(() => { undoButton().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
+    expect(toast()).toBeNull();
+    expect(document.activeElement).toBe(button("Start"));
+  });
+
+  it("a long break picked by hand after the cycle's break shows 0 of 4, not 4 of 4", () => {
+    for (let round = 0; round < 4; round += 1) {
+      if (!pressed().includes("Focus")) press(button("Focus"));
+      press(button("Start"));
+      seconds(25 * 60);
+    }
+    press(button("Start"));
+    seconds(15 * 60); // the long break ends
+    expect($(".pt-sessions p").textContent).toContain("0 of 4 focus blocks");
+    press(button("Long break"));
+    expect($(".pt-sessions p").textContent).toContain("0 of 4 focus blocks");
+  });
+
+  it("places the Undo toast right after the timer card, so it can join the flow on short screens", () => {
+    press(button("Start"));
+    seconds(5);
+    press(button("Reset"));
+    expect(toast()!.previousElementSibling!.classList.contains("pt-card")).toBe(true);
   });
 });

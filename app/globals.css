@@ -53,3 +53,10 @@ html, body { margin: 0; background: var(--as-bg); }
 /* While the Undo toast shows, leave room below the page so it never covers the footer or a focused control. */
 .pt-app:has(.as-toast) { padding-bottom: 88px; }
 html:has(.as-toast) { scroll-padding-bottom: 96px; }
+/* Short viewports (a small window, a phone held sideways): a fixed toast could sit on Start and Reset,
+   so there it joins the page flow right under the timer card instead of floating over it. */
+@media (max-height: 560px) {
+  .pt-app .as-toast { position: static; justify-self: center; transform: none; box-shadow: none; }
+  .pt-app:has(.as-toast) { padding-bottom: 0; }
+  html:has(.as-toast) { scroll-padding-bottom: 0; }
+}

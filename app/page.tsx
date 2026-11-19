@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { AppFoot, AppTop } from "@/components/app-shell";
 import { SITE_TITLE, SOURCE_URL } from "@/lib/site";
 import { LONG_BREAK_EVERY, MODES, clock, cycleMarks, finishedLine, initialView, interruptedRound, tabTitle, timerReducer, type Mode, type TimerState } from "@/lib/timer";
@@ -15,6 +15,7 @@ export default function Home() {
   const [undoRound, setUndoRound] = useState<TimerState | null>(null);
   const [toastHeld, setToastHeld] = useState({ hover: false, focus: false });
   const held = toastHeld.hover || toastHeld.focus;
+  const startRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!undoRound || held) return;
@@ -27,14 +28,21 @@ export default function Home() {
     const { now } = action;
     const lost = interruptedRound(view, now);
     dispatch(action);
+    // Picking a mode that has not started loses nothing, so an earlier Undo stays with its own deadline.
+    if (!lost) return;
     setUndoRound(lost);
     setToastHeld({ hover: false, focus: false });
   }
-  function undo() {
-    if (!undoRound) return;
-    dispatch({ type: "restore", timer: undoRound });
+  // Closing the toast while focus is inside it sends focus to the timer button, not to <body>.
+  function closeToast(focusInside: boolean) {
     setUndoRound(null);
     setToastHeld({ hover: false, focus: false });
+    if (focusInside) startRef.current?.focus();
+  }
+  function undo(focusInside: boolean) {
+    if (!undoRound) return;
+    dispatch({ type: "restore", timer: undoRound });
+    closeToast(focusInside);
   }
 
   useEffect(() => {
@@ -108,13 +116,31 @@ export default function Home() {
             <span style={{ width: `${progress}%` }} />
           </div>
           <div className="pt-actions">
-            <button type="button" className="as-button pt-start" onClick={() => { setUndoRound(null); dispatch({ type: "toggle", now: performance.now() }); }}>
+            {/* The action follows the label on screen: a Pause that lands just after a tick ended the round does nothing. */}
+            <button type="button" ref={startRef} className="as-button pt-start" onClick={() => { setUndoRound(null); dispatch({ type: active ? "pause" : "start", now: performance.now() }); }}>
               {active ? "Pause" : ready ? "Start" : "Resume"}
             </button>
             {/* Nothing to reset while the round has not started: aria-disabled keeps focus on the button after a Reset. */}
             <button type="button" className="as-plain pt-reset" aria-disabled={ready ? "true" : undefined} onClick={() => { if (!ready) clearing({ type: "reset", now: performance.now() }); }}>Reset</button>
           </div>
         </section>
+
+        {/* Placed after the timer so that on short screens, where it sits in the page flow, it is next to Start and Reset. */}
+        {undoRound ? (
+          <div
+            className="as-toast"
+            role="group"
+            aria-label="Undo"
+            onMouseEnter={() => setToastHeld((h) => ({ ...h, hover: true }))}
+            onMouseLeave={() => setToastHeld((h) => ({ ...h, hover: false }))}
+            onFocus={() => setToastHeld((h) => ({ ...h, focus: true }))}
+            onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setToastHeld((h) => ({ ...h, focus: false })); }}
+            onKeyDown={(event) => { if (event.key === "Escape") closeToast(event.currentTarget.contains(document.activeElement)); }}
+          >
+            <span>{MODES[undoRound.mode].label} cleared at {clock(undoRound.remaining)}</span>
+            <button type="button" className="as-plain" onClick={(event) => undo(event.currentTarget === document.activeElement)} aria-label={`Undo: bring back ${MODES[undoRound.mode].label} at ${clock(undoRound.remaining)}`}>Undo</button>
+          </div>
+        ) : null}
 
         <section className="pt-card pt-sessions" aria-labelledby="sessions-title">
           <h2 id="sessions-title">Session marks</h2>
@@ -135,21 +161,6 @@ export default function Home() {
 
         <p className="as-sr" role="status" aria-live="polite">{view.announcement}</p>
 
-        {undoRound ? (
-          <div
-            className="as-toast"
-            role="group"
-            aria-label="Undo"
-            onMouseEnter={() => setToastHeld((h) => ({ ...h, hover: true }))}
-            onMouseLeave={() => setToastHeld((h) => ({ ...h, hover: false }))}
-            onFocus={() => setToastHeld((h) => ({ ...h, focus: true }))}
-            onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setToastHeld((h) => ({ ...h, focus: false })); }}
-            onKeyDown={(event) => { if (event.key === "Escape") setUndoRound(null); }}
-          >
-            <span>{MODES[undoRound.mode].label} cleared at {clock(undoRound.remaining)}</span>
-            <button type="button" className="as-plain" onClick={undo} aria-label={`Undo: bring back ${MODES[undoRound.mode].label} at ${clock(undoRound.remaining)}`}>Undo</button>
-          </div>
-        ) : null}
 
         <p className="as-note">
           Runs in this tab only. No sound, no notifications and no saved history: the count resets when you reload. While
