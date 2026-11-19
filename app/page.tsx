@@ -119,7 +119,11 @@ export default function Home() {
               // The action is the label the person saw when the press began: a round that ends between press and
               // release (a tab catching up on visibilitychange) turns Pause into Start, and that click must not start it.
               onPointerDown={() => { pressIntent.current = active ? "pause" : "start"; }}
-              onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") pressIntent.current = active ? "pause" : "start"; }}
+              // Only the first keydown of a press counts: a held Space repeats keydown after the label changed.
+              onKeyDown={(event) => { if (!event.repeat && (event.key === "Enter" || event.key === " ")) pressIntent.current = active ? "pause" : "start"; }}
+              // A press that never becomes a click (cancelled pointer, focus moved away) leaves no stale intent behind.
+              onPointerCancel={() => { pressIntent.current = null; }}
+              onBlur={() => { pressIntent.current = null; }}
               onClick={() => {
                 const intent = pressIntent.current ?? (active ? "pause" : "start");
                 pressIntent.current = null;

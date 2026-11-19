@@ -324,6 +324,29 @@ describe("deferred review 2026-11-19", () => {
     expect(clockText()).toBe("04:55");
   });
 
+  it("holding Space on Pause while the round ends does not start the break on release", () => {
+    press(button("Start"));
+    const key = (repeat: boolean) => act(() => { button(repeat ? "Start" : "Pause").dispatchEvent(new KeyboardEvent("keydown", { key: " ", repeat, bubbles: true })); });
+    key(false);
+    jump(25 * 60_000 + 300);
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    key(true); // auto-repeat after the button became Start
+    act(() => { button("Start").dispatchEvent(new MouseEvent("click", { bubbles: true })); }); // Space released
+    seconds(5);
+    expect(clockText()).toBe("05:00");
+  });
+
+  it("a cancelled press leaves no intent: a click-only Start (assistive tech) still starts", () => {
+    press(button("Start"));
+    act(() => { button("Pause").dispatchEvent(new Event("pointerdown", { bubbles: true })); });
+    act(() => { button("Pause").dispatchEvent(new Event("pointercancel", { bubbles: true })); });
+    jump(25 * 60_000 + 300);
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    act(() => { button("Start").dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+    seconds(5);
+    expect(clockText()).toBe("04:55");
+  });
+
   it("picking a mode that has not started keeps the earlier Undo", () => {
     press(button("Start"));
     seconds(10);
