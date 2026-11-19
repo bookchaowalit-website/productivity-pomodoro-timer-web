@@ -303,6 +303,27 @@ describe("deferred review 2026-11-19", () => {
     expect(clockText()).toBe("05:00"); // the break waits for Start
   });
 
+  it("a Pause press that began before the round ended does not start the break on release", () => {
+    press(button("Start"));
+    const pause = button("Pause");
+    act(() => { pause.dispatchEvent(new Event("pointerdown", { bubbles: true })); });
+    // The round ends while the button is held: the tab catches up and React redraws Pause as Start.
+    jump(25 * 60_000 + 300);
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    expect(pressed()).toEqual(["Short break"]);
+    expect(button("Start")).toBeTruthy();
+    // Release: the click lands on the button now labelled Start.
+    act(() => { button("Start").dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+    seconds(5);
+    expect(clockText()).toBe("05:00");
+    expect(button("Start")).toBeTruthy();
+    // A fresh press on Start still starts the break.
+    act(() => { button("Start").dispatchEvent(new Event("pointerdown", { bubbles: true })); });
+    press(button("Start"));
+    seconds(5);
+    expect(clockText()).toBe("04:55");
+  });
+
   it("picking a mode that has not started keeps the earlier Undo", () => {
     press(button("Start"));
     seconds(10);

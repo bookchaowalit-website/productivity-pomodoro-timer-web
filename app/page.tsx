@@ -15,6 +15,8 @@ export default function Home() {
   // Escape): a timeout could expire before a screen-reader or keyboard user reaches the button.
   const [undoRound, setUndoRound] = useState<TimerState | null>(null);
   const startRef = useRef<HTMLButtonElement>(null);
+  // What the Start/Pause button said when the current press began (pointer down or Enter/Space down).
+  const pressIntent = useRef<"start" | "pause" | null>(null);
   // performance.now() plus time the device slept (see createSleepAwareClock).
   const [now] = useState(() => (typeof window === "undefined" ? () => 0 : createSleepAwareClock()));
 
@@ -110,7 +112,21 @@ export default function Home() {
           </div>
           <div className="pt-actions">
             {/* The action follows the label on screen: a Pause that lands just after a tick ended the round does nothing. */}
-            <button type="button" ref={startRef} className="as-button pt-start" onClick={() => { setUndoRound(null); dispatch({ type: active ? "pause" : "start", now: now() }); }}>
+            <button
+              type="button"
+              ref={startRef}
+              className="as-button pt-start"
+              // The action is the label the person saw when the press began: a round that ends between press and
+              // release (a tab catching up on visibilitychange) turns Pause into Start, and that click must not start it.
+              onPointerDown={() => { pressIntent.current = active ? "pause" : "start"; }}
+              onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") pressIntent.current = active ? "pause" : "start"; }}
+              onClick={() => {
+                const intent = pressIntent.current ?? (active ? "pause" : "start");
+                pressIntent.current = null;
+                setUndoRound(null);
+                dispatch({ type: intent, now: now() });
+              }}
+            >
               {active ? "Pause" : ready ? "Start" : "Resume"}
             </button>
             {/* Nothing to reset while the round has not started: aria-disabled keeps focus on the button after a Reset. */}
