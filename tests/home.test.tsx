@@ -41,6 +41,14 @@ describe("home page (server render)", () => {
     expect(focus).toMatch(/outline-offset: 2px/);
   });
 
+  it("sizes the Undo toast to its text so phones show the mode and time left", () => {
+    // left: 50% alone caps an auto-width fixed box at half the screen before translateX(-50%) runs.
+    const css = readFileSync("app/app-shell.css", "utf8");
+    const toast = css.match(/\.as-toast \{([^}]*)\}/)?.[1] ?? "";
+    expect(toast).toMatch(/width: max-content/);
+    expect(toast).toMatch(/max-width: calc\(100vw - 32px\)/);
+  });
+
   it("never live-announces the ticking clock", () => {
     expect(html).not.toMatch(/role="timer"[^>]*aria-live="(polite|assertive)"/);
     expect(html).toMatch(/role="status" aria-live="polite"/);
