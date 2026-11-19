@@ -49,7 +49,7 @@ describe("modes", () => {
     expect(pressed()).toEqual(["Long break"]);
     expect(clockText()).toBe("15:00");
     expect(button("Start")).toBeTruthy();
-    expect(status()).toBe("Long break selected, 15:00. Focus round cleared at 24:57. Undo is available for a few seconds.");
+    expect(status()).toBe("Long break selected, 15:00. Focus round cleared at 24:57. Undo is available until you start the next round.");
     seconds(5);
     expect(clockText()).toBe("15:00");
   });
@@ -60,7 +60,7 @@ describe("modes", () => {
     expect(status()).toBe("");
     press(button("Focus"));
     expect(clockText()).toBe("25:00");
-    expect(status()).toBe("Focus selected, 25:00. Focus round cleared at 24:56. Undo is available for a few seconds.");
+    expect(status()).toBe("Focus selected, 25:00. Focus round cleared at 24:56. Undo is available until you start the next round.");
     press(button("Focus")); // nothing started now, so the plain line
     expect(status()).toBe("Focus selected, 25:00.");
     press(button("Focus")); // same message twice: the text still changes, so it is read again
@@ -149,15 +149,16 @@ describe("deadline timeout", () => {
 });
 
 describe("clock changes and late pauses", () => {
-  it("ignores the system clock being set back or forward", () => {
+  it("ignores the system clock being set back, and small forward corrections", () => {
     press(button("Start"));
     seconds(60);
     act(() => { vi.setSystemTime(Date.now() - 60 * 60_000); }); // clock set back one hour
     seconds(1);
     expect(clockText()).toBe("23:59");
-    act(() => { vi.setSystemTime(Date.now() + 5 * 60 * 60_000); }); // and forward five hours
+    act(() => { vi.setSystemTime(Date.now() + 1500); }); // an NTP-sized step forward
     seconds(1);
     expect(clockText()).toBe("23:58");
+    // A large forward jump looks exactly like sleep and counts as elapsed time (PRODUCT.md Known limits).
   });
 
   it("Pause after time ran out but before a tick ends and counts the round", () => {
@@ -246,21 +247,19 @@ describe("review 2026-11-18", () => {
     press(button("Start"));
     seconds(623);
     press(button("Reset"));
-    expect(status()).toBe("Focus round cleared at 14:37. Undo is available for a few seconds.");
+    expect(status()).toBe("Focus round cleared at 14:37. Undo is available until you start the next round.");
     seconds(2);
-    expect(status()).toBe("Focus round cleared at 14:37. Undo is available for a few seconds."); // no per-tick updates
+    expect(status()).toBe("Focus round cleared at 14:37. Undo is available until you start the next round."); // no per-tick updates
   });
 
-  it("a mode pick mid-round offers Undo; the toast waits while hovered and closes 6 s after", () => {
+  it("a mode pick mid-round offers Undo, which waits (no timeout) until the next Start", () => {
     press(button("Start"));
     seconds(10);
     press(button("Short break"));
     expect(toast()!.textContent).toContain("Focus cleared at 24:50");
-    act(() => { toast()!.dispatchEvent(new MouseEvent("mouseover", { bubbles: true, relatedTarget: document.body })); });
-    seconds(10);
+    seconds(120); // a keyboard or screen-reader user still reaches Undo
     expect(toast()).not.toBeNull();
-    act(() => { toast()!.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body })); });
-    seconds(6);
+    press(button("Start"));
     expect(toast()).toBeNull();
   });
 
@@ -304,15 +303,25 @@ describe("deferred review 2026-11-19", () => {
     expect(clockText()).toBe("05:00"); // the break waits for Start
   });
 
-  it("picking a mode that has not started keeps the earlier Undo and its deadline", () => {
+  it("picking a mode that has not started keeps the earlier Undo", () => {
     press(button("Start"));
     seconds(10);
     press(button("Short break")); // clears the running focus block: Undo appears
     seconds(3);
     press(button("Focus")); // the short break never started: nothing new is lost
+    seconds(30);
     expect(toast()!.textContent).toContain("Focus cleared at 24:50");
-    seconds(3); // 6 s after the first clear, not after the second pick
-    expect(toast()).toBeNull();
+  });
+
+  it("a round whose deadline passed while the device slept ends on wake, even if performance.now() stood still", () => {
+    press(button("Start"));
+    seconds(60);
+    // Sleep: the wall clock moves 30 min, performance.now() (perf) does not, no timers fire.
+    act(() => { vi.setSystemTime(Date.now() + 30 * 60_000); });
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    expect(pressed()).toEqual(["Short break"]);
+    expect($(".pt-done").textContent).toBe("Focus done — Short break is ready");
+    expect(document.title).toContain("Time is up");
   });
 
   it("returns focus to the timer button after Undo or Escape from inside the toast", () => {

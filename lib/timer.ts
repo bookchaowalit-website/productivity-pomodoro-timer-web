@@ -139,7 +139,7 @@ export function timerReducer(view: TimerView, action: TimerAction): TimerView {
 
 /** What the live region says when a started round is cleared: the round, the time left, and Undo. */
 export function clearedLine(lost: TimerState): string {
-  return `${MODES[lost.mode].label} round cleared at ${clock(lost.remaining)}. Undo is available for a few seconds.`;
+  return `${MODES[lost.mode].label} round cleared at ${clock(lost.remaining)}. Undo is available until you start the next round.`;
 }
 
 /**
@@ -173,4 +173,27 @@ export function tabTitle(view: TimerView, siteTitle: string): string {
   if (timer.active) return `${clock(timer.remaining)} ${MODES[timer.mode].label} · ${siteTitle}`;
   if (finished) return `Time is up: ${MODES[finished].label} done · ${siteTitle}`;
   return siteTitle;
+}
+
+/**
+ * The timer's clock: performance.now() (monotonic, so changing the system clock cannot add or remove
+ * time), plus any time the device slept. Some browsers (Chromium on Linux) stop performance.now() during
+ * sleep, so a round whose deadline passed while the lid was shut would otherwise still show time left.
+ * When the wall clock moved more than two seconds further than the monotonic one between two readings,
+ * that gap is added from then on. A backward wall-clock change (or a small NTP step) is ignored; a large
+ * forward change of the system clock cannot be told apart from sleep and counts too.
+ */
+export function createSleepAwareClock(mono: () => number = () => performance.now(), wall: () => number = () => Date.now()) {
+  let lastMono = mono();
+  let lastWall = wall();
+  let slept = 0;
+  return function now(): number {
+    const m = mono();
+    const w = wall();
+    const gap = w - lastWall - (m - lastMono);
+    if (gap > 2000) slept += gap;
+    lastMono = m;
+    lastWall = w;
+    return m + slept;
+  };
 }

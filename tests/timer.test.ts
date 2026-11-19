@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
-import { MODES, initialTimer, initialView, chooseMode, tickTimer, resetTimer, clock, tabTitle, timerReducer } from "../lib/timer.ts";
+import { MODES, initialTimer, initialView, chooseMode, tickTimer, resetTimer, clock, tabTitle, timerReducer, createSleepAwareClock } from "../lib/timer.ts";
 
 afterEach(() => { vi.useRealTimers(); });
 
@@ -170,10 +170,10 @@ test("Reset and mode picks that clear a started round announce it and that Undo 
   const { clearedLine } = await import("../lib/timer.ts");
   const running = timerReducer(initialView(), { type: "start", now: 0 });
   const reset = timerReducer(running, { type: "reset", now: 623_000 });
-  assert.equal(reset.announcement, "Focus round cleared at 14:37. Undo is available for a few seconds.");
+  assert.equal(reset.announcement, "Focus round cleared at 14:37. Undo is available until you start the next round.");
   const picked = timerReducer(running, { type: "choose", mode: "shortBreak", now: 10_000 });
-  assert.equal(picked.announcement, "Short break selected, 05:00. Focus round cleared at 24:50. Undo is available for a few seconds.");
-  assert.equal(clearedLine({ mode: "longBreak", remaining: 61, active: false, sessions: 0 }), "Long break round cleared at 01:01. Undo is available for a few seconds.");
+  assert.equal(picked.announcement, "Short break selected, 05:00. Focus round cleared at 24:50. Undo is available until you start the next round.");
+  assert.equal(clearedLine({ mode: "longBreak", remaining: 61, active: false, sessions: 0 }), "Long break round cleared at 01:01. Undo is available until you start the next round.");
   // Nothing lost: no Undo line.
   assert.equal(timerReducer(initialView(), { type: "choose", mode: "longBreak", now: 0 }).announcement, "Long break selected, 15:00.");
 });
@@ -185,4 +185,22 @@ test("only the long break opened by the fourth focus block keeps its full-cycle 
   assert.equal(chooseMode(cycleBreak, "work").cycleDone, undefined);
   assert.equal(chooseMode(chooseMode(cycleBreak, "work"), "longBreak").cycleDone, undefined);
   assert.equal(tickTimer({ mode: "work", remaining: 1, active: true, sessions: 0 }).cycleDone, undefined);
+});
+
+test("createSleepAwareClock adds time the wall clock moved beyond the monotonic clock (sleep), not backward jumps", () => {
+  let mono = 1000;
+  let wall = 50_000;
+  const now = createSleepAwareClock(() => mono, () => wall);
+  assert.equal(now(), 1000);
+  mono += 500; wall += 500; // normal running
+  assert.equal(now(), 1500);
+  wall += 60_000; // slept a minute; performance.now() stood still
+  assert.equal(now(), 61_500);
+  mono += 1000; wall += 1000;
+  assert.equal(now(), 62_500);
+  wall -= 3_600_000; // system clock set back an hour: ignored
+  mono += 1000;
+  assert.equal(now(), 63_500);
+  mono += 1000; wall += 1000;
+  assert.equal(now(), 64_500);
 });

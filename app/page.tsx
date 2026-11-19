@@ -3,7 +3,7 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { AppFoot, AppTop } from "@/components/app-shell";
 import { SITE_TITLE, SOURCE_URL } from "@/lib/site";
-import { LONG_BREAK_EVERY, MODES, clock, cycleMarks, finishedLine, initialView, interruptedRound, tabTitle, timerReducer, type Mode, type TimerState } from "@/lib/timer";
+import { LONG_BREAK_EVERY, MODES, clock, createSleepAwareClock, cycleMarks, finishedLine, initialView, interruptedRound, tabTitle, timerReducer, type Mode, type TimerState } from "@/lib/timer";
 
 const MODE_ORDER = Object.keys(MODES) as Mode[];
 
@@ -11,17 +11,12 @@ export default function Home() {
   const [view, dispatch] = useReducer(timerReducer, undefined, initialView);
   const { mode, remaining, active, sessions } = view.timer;
   const duration = MODES[mode].duration;
-  // A Reset or mode pick that threw away a started round, kept for a few seconds so Undo can bring it back.
+  // A Reset or mode pick that threw away a started round. Undo stays until the next Start (or Undo /
+  // Escape): a timeout could expire before a screen-reader or keyboard user reaches the button.
   const [undoRound, setUndoRound] = useState<TimerState | null>(null);
-  const [toastHeld, setToastHeld] = useState({ hover: false, focus: false });
-  const held = toastHeld.hover || toastHeld.focus;
   const startRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!undoRound || held) return;
-    const timer = window.setTimeout(() => setUndoRound(null), 6000);
-    return () => window.clearTimeout(timer);
-  }, [undoRound, held]);
+  // performance.now() plus time the device slept (see createSleepAwareClock).
+  const [now] = useState(() => (typeof window === "undefined" ? () => 0 : createSleepAwareClock()));
 
   // Reset and mode picks stay one tap, but a started round they clear can be undone.
   function clearing(action: { type: "reset"; now: number } | { type: "choose"; mode: Mode; now: number }) {
@@ -31,12 +26,10 @@ export default function Home() {
     // Picking a mode that has not started loses nothing, so an earlier Undo stays with its own deadline.
     if (!lost) return;
     setUndoRound(lost);
-    setToastHeld({ hover: false, focus: false });
   }
   // Closing the toast while focus is inside it sends focus to the timer button, not to <body>.
   function closeToast(focusInside: boolean) {
     setUndoRound(null);
-    setToastHeld({ hover: false, focus: false });
     if (focusInside) startRef.current?.focus();
   }
   function undo(focusInside: boolean) {
@@ -47,15 +40,15 @@ export default function Home() {
 
   useEffect(() => {
     if (!active) return;
-    // Ticks only re-read the monotonic clock; a tab coming back into view catches up at once.
-    const tick = () => dispatch({ type: "tick", now: performance.now() });
+    // Ticks only re-read the clock; a tab coming back into view catches up at once.
+    const tick = () => dispatch({ type: "tick", now: now() });
     const interval = window.setInterval(tick, 1000);
     document.addEventListener("visibilitychange", tick);
     return () => {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", tick);
     };
-  }, [active]);
+  }, [active, now]);
 
   // A one-shot timeout at the deadline ends the round even when a hidden tab throttles the
   // interval above to about once a minute, so the "Time is up" title is not left waiting.
@@ -63,11 +56,11 @@ export default function Home() {
   useEffect(() => {
     if (endsAt === null) return;
     const timeout = window.setTimeout(
-      () => dispatch({ type: "tick", now: performance.now() }),
-      Math.max(0, endsAt - performance.now()) + 20,
+      () => dispatch({ type: "tick", now: now() }),
+      Math.max(0, endsAt - now()) + 20,
     );
     return () => window.clearTimeout(timeout);
-  }, [endsAt]);
+  }, [endsAt, now]);
 
   // The tab title is the end-of-round signal: time left while running, "Time is up" after a round.
   const title = tabTitle(view, SITE_TITLE);
@@ -92,7 +85,7 @@ export default function Home() {
         <h1 className="as-sr">Pomodoro timer</h1>
         <div className="as-segmented pt-modes" role="group" aria-label="Timer mode">
           {MODE_ORDER.map((item) => (
-            <button type="button" key={item} aria-pressed={mode === item} onClick={() => clearing({ type: "choose", mode: item, now: performance.now() })}>
+            <button type="button" key={item} aria-pressed={mode === item} onClick={() => clearing({ type: "choose", mode: item, now: now() })}>
               {MODES[item].label}
             </button>
           ))}
@@ -117,11 +110,11 @@ export default function Home() {
           </div>
           <div className="pt-actions">
             {/* The action follows the label on screen: a Pause that lands just after a tick ended the round does nothing. */}
-            <button type="button" ref={startRef} className="as-button pt-start" onClick={() => { setUndoRound(null); dispatch({ type: active ? "pause" : "start", now: performance.now() }); }}>
+            <button type="button" ref={startRef} className="as-button pt-start" onClick={() => { setUndoRound(null); dispatch({ type: active ? "pause" : "start", now: now() }); }}>
               {active ? "Pause" : ready ? "Start" : "Resume"}
             </button>
             {/* Nothing to reset while the round has not started: aria-disabled keeps focus on the button after a Reset. */}
-            <button type="button" className="as-plain pt-reset" aria-disabled={ready ? "true" : undefined} onClick={() => { if (!ready) clearing({ type: "reset", now: performance.now() }); }}>Reset</button>
+            <button type="button" className="as-plain pt-reset" aria-disabled={ready ? "true" : undefined} onClick={() => { if (!ready) clearing({ type: "reset", now: now() }); }}>Reset</button>
           </div>
         </section>
 
@@ -131,10 +124,6 @@ export default function Home() {
             className="as-toast"
             role="group"
             aria-label="Undo"
-            onMouseEnter={() => setToastHeld((h) => ({ ...h, hover: true }))}
-            onMouseLeave={() => setToastHeld((h) => ({ ...h, hover: false }))}
-            onFocus={() => setToastHeld((h) => ({ ...h, focus: true }))}
-            onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setToastHeld((h) => ({ ...h, focus: false })); }}
             onKeyDown={(event) => { if (event.key === "Escape") closeToast(event.currentTarget.contains(document.activeElement)); }}
           >
             <span>{MODES[undoRound.mode].label} cleared at {clock(undoRound.remaining)}</span>

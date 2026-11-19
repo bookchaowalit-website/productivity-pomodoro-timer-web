@@ -22,6 +22,10 @@ One person working in one browser tab who wants a quiet interval timer for focus
 4. `/api/mcp` answers JSON-RPC with one tool, `get_timer_modes`, that returns the real modes and durations.
 5. Front-end errors go to Sentry (errors only, personal data stripped) when `NEXT_PUBLIC_SENTRY_DSN` is set.
 
+## Known limits
+
+- A large forward change of the system clock while a round runs counts as elapsed time: it looks the same as the device sleeping, which the timer catches up on (setting the clock back is ignored).
+
 ## What does not work (and must not be claimed)
 
 - Durations are fixed. There are no custom durations.
