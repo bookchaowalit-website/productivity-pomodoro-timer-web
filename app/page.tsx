@@ -140,7 +140,13 @@ export default function Home() {
               }}
               // A press that never becomes a click (cancelled pointer, focus moved away) leaves no stale intent behind.
               onPointerCancel={() => { pointerIntent.current = null; parkedPointerIntent.current = null; }}
-              onPointerLeave={() => { parkedPointerIntent.current = pointerIntent.current; pointerIntent.current = null; }}
+              // Touch fires pointerout/leave after lifting the finger and before the click (and a touch press cannot
+              // be dragged off: the pointer is captured), so only mouse and pen presses park their intent.
+              onPointerLeave={(event) => {
+                if (event.pointerType === "touch") return;
+                parkedPointerIntent.current = pointerIntent.current;
+                pointerIntent.current = null;
+              }}
               // Back on the button with the primary button still held: the same press continues, with its intent.
               onPointerEnter={(event) => {
                 if (event.buttons & 1) pointerIntent.current = parkedPointerIntent.current;
