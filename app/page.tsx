@@ -19,6 +19,8 @@ export default function Home() {
   // Keyboard and pointer presses are tracked apart: a pointer leaving the button must not cancel a held Space.
   const keyIntent = useRef<"start" | "pause" | null>(null);
   const pointerIntent = useRef<"start" | "pause" | null>(null);
+  // A pointer press dragged off the button parks its intent here; dragging back on with the button held restores it.
+  const parkedPointerIntent = useRef<"start" | "pause" | null>(null);
   // performance.now() plus time the device slept (see createSleepAwareClock).
   const [now] = useState(() => (typeof window === "undefined" ? Object.assign(() => 0, { slept: () => 0 }) : createSleepAwareClock()));
   // Bumped when the clock catches up on sleep, so the round-end timeout is set again for the real deadline.
@@ -127,7 +129,7 @@ export default function Home() {
               className="as-button pt-start"
               // The action is the label the person saw when the press began: a round that ends between press and
               // release (a tab catching up on visibilitychange) turns Pause into Start, and that click must not start it.
-              onPointerDown={() => { pointerIntent.current = active ? "pause" : "start"; }}
+              onPointerDown={() => { pointerIntent.current = active ? "pause" : "start"; parkedPointerIntent.current = null; }}
               // Only the first keydown of a press counts: a held Space repeats keydown after the label changed.
               onKeyDown={(event) => {
                 if (event.key !== "Enter" && event.key !== " ") return;
@@ -137,9 +139,14 @@ export default function Home() {
                 keyIntent.current = active ? "pause" : "start";
               }}
               // A press that never becomes a click (cancelled pointer, focus moved away) leaves no stale intent behind.
-              onPointerCancel={() => { pointerIntent.current = null; }}
-              onPointerLeave={() => { pointerIntent.current = null; }}
-              onBlur={() => { keyIntent.current = null; pointerIntent.current = null; }}
+              onPointerCancel={() => { pointerIntent.current = null; parkedPointerIntent.current = null; }}
+              onPointerLeave={() => { parkedPointerIntent.current = pointerIntent.current; pointerIntent.current = null; }}
+              // Back on the button with the primary button still held: the same press continues, with its intent.
+              onPointerEnter={(event) => {
+                if (event.buttons & 1) pointerIntent.current = parkedPointerIntent.current;
+                parkedPointerIntent.current = null;
+              }}
+              onBlur={() => { keyIntent.current = null; pointerIntent.current = null; parkedPointerIntent.current = null; }}
               onClick={(event) => {
                 // A click from a key press (event.detail 0) uses the key intent; a pointer click the pointer intent.
                 const recorded = event.detail === 0 ? keyIntent.current : pointerIntent.current;

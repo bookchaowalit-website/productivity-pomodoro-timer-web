@@ -368,6 +368,18 @@ describe("deferred review 2026-11-19", () => {
     expect(clockText()).toBe("04:55");
   });
 
+  it("a press dragged off Pause and back on keeps its Pause intent", () => {
+    press(button("Start"));
+    act(() => { button("Pause").dispatchEvent(new Event("pointerdown", { bubbles: true })); });
+    act(() => { button("Pause").dispatchEvent(new MouseEvent("pointerout", { bubbles: true, relatedTarget: document.body })); });
+    jump(25 * 60_000 + 300);
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    act(() => { button("Start").dispatchEvent(new MouseEvent("pointerover", { bubbles: true, buttons: 1, relatedTarget: document.body })); });
+    act(() => { button("Start").dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 })); });
+    seconds(5);
+    expect(clockText()).toBe("05:00");
+  });
+
   it("holding Space on Pause while the round ends does not start the break on release", () => {
     press(button("Start"));
     const key = (repeat: boolean) => act(() => { button(repeat ? "Start" : "Pause").dispatchEvent(new KeyboardEvent("keydown", { key: " ", repeat, bubbles: true })); });
