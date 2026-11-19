@@ -137,8 +137,8 @@
 .as-empty strong { display: block; margin-bottom: 4px; color: var(--as-fg); font-size: 17px; }
 
 /* Undo toast */
-.as-toast { position: fixed; left: 50%; bottom: 24px; z-index: 40; display: flex; width: max-content; max-width: calc(100vw - 32px); align-items: center; gap: 8px; padding: 4px 4px 4px 16px; border-radius: 980px; background: var(--as-toast-bg); color: var(--as-toast-fg); box-shadow: 0 8px 24px rgb(0 0 0 / 20%); font-size: 15px; transform: translateX(-50%); }
-.as-toast span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.as-toast { position: fixed; left: 50%; bottom: 24px; z-index: 40; display: flex; width: max-content; max-width: calc(100vw - 32px); align-items: center; gap: 8px; padding: 4px 4px 4px 16px; border-radius: 22px; background: var(--as-toast-bg); color: var(--as-toast-fg); box-shadow: 0 8px 24px rgb(0 0 0 / 20%); font-size: 15px; transform: translateX(-50%); }
+.as-toast span { min-width: 0; padding-block: 8px; line-height: 1.35; overflow-wrap: anywhere; }
 .as-toast .as-plain { flex: none; color: var(--as-toast-action); }
 
 .as-note { margin: 16px 0 0; color: var(--as-muted); font-size: 14px; line-height: 1.6; }

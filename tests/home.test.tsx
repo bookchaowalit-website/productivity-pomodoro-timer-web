@@ -49,6 +49,15 @@ describe("home page (server render)", () => {
     expect(toast).toMatch(/max-width: calc\(100vw - 32px\)/);
   });
 
+  it("lets the Undo text wrap instead of hiding the time left behind an ellipsis", () => {
+    const css = readFileSync("app/app-shell.css", "utf8");
+    const span = css.match(/\.as-toast span \{([^}]*)\}/)?.[1] ?? "";
+    expect(span).not.toMatch(/nowrap|ellipsis/);
+    expect(span).toMatch(/overflow-wrap: anywhere/);
+    const toast = css.match(/\.as-toast \{([^}]*)\}/)?.[1] ?? "";
+    expect(toast).toMatch(/border-radius: 22px/); // a pill radius would cut a two-line toast's corners
+  });
+
   it("never live-announces the ticking clock", () => {
     expect(html).not.toMatch(/role="timer"[^>]*aria-live="(polite|assertive)"/);
     expect(html).toMatch(/role="status" aria-live="polite"/);
