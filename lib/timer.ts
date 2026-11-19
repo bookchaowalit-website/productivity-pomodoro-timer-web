@@ -118,9 +118,12 @@ export function timerReducer(view: TimerView, action: TimerAction): TimerView {
     // is still counted, then act on the state that follows. When they throw away a started round,
     // the live region says so and that Undo can bring it back (the page shows the Undo toast).
     case "reset": {
+      // Time already ran out (a tick just had not noticed): the result is the same as when the tick came first,
+      // the round ends and counts and the "Time is up" signal stays (the next round is already fresh, so Reset
+      // has nothing more to clear).
+      if (timeIsUp(view, action.now)) return finishRound(view);
       const lost = interruptedRound(view, action.now);
-      const current = timeIsUp(view, action.now) ? finishRound(view) : view;
-      return { timer: resetTimer(current.timer), endsAt: null, finished: null, announcement: lost ? fresh(current.announcement, clearedLine(lost)) : "" };
+      return { timer: resetTimer(view.timer), endsAt: null, finished: null, announcement: lost ? fresh(view.announcement, clearedLine(lost)) : "" };
     }
     case "choose": {
       const lost = interruptedRound(view, action.now);

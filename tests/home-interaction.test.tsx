@@ -312,8 +312,8 @@ describe("deferred review 2026-11-19", () => {
     act(() => { document.dispatchEvent(new Event("visibilitychange")); });
     expect(pressed()).toEqual(["Short break"]);
     expect(button("Start")).toBeTruthy();
-    // Release: the click lands on the button now labelled Start.
-    act(() => { button("Start").dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+    // Release: the click (a pointer click, detail 1) lands on the button now labelled Start.
+    act(() => { button("Start").dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 })); });
     seconds(5);
     expect(clockText()).toBe("05:00");
     expect(button("Start")).toBeTruthy();
@@ -343,6 +343,17 @@ describe("deferred review 2026-11-19", () => {
     act(() => { button("Pause").dispatchEvent(repeat); });
     expect(repeat.defaultPrevented).toBe(true);
     expect(button("Pause")).toBeTruthy();
+  });
+
+  it("a pointer leaving the button does not cancel a held Space on Pause", () => {
+    press(button("Start"));
+    act(() => { button("Pause").dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true })); });
+    jump(25 * 60_000 + 300);
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    act(() => { button("Start").dispatchEvent(new MouseEvent("pointerout", { bubbles: true, relatedTarget: document.body })); });
+    act(() => { button("Start").dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 0 })); }); // Space released
+    seconds(5);
+    expect(clockText()).toBe("05:00");
   });
 
   it("a press dragged off the button leaves no intent behind", () => {

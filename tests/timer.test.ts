@@ -114,6 +114,11 @@ test("Reset or a mode pick after time ran out (before a tick) still counts the f
   const end = 25 * 60_000;
   const reset = timerReducer(running, { type: "reset", now: end + 10 });
   assert.deepEqual(reset.timer, { mode: "shortBreak", remaining: 300, active: false, sessions: 1 });
+  // Same outcome as the tick coming first: the round-end signal stays (title "Time is up", announcement).
+  const ticked = timerReducer(running, { type: "tick", now: end + 10 });
+  assert.deepEqual(reset, ticked);
+  assert.equal(reset.finished, "work");
+  assert.match(reset.announcement, /^Focus finished\./);
   const picked = timerReducer(running, { type: "choose", mode: "work", now: end + 10 });
   assert.deepEqual(picked.timer, { mode: "work", remaining: 1500, active: false, sessions: 1 });
   assert.equal(picked.announcement, "Focus selected, 25:00.");
