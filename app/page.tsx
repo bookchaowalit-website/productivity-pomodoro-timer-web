@@ -18,7 +18,9 @@ export default function Home() {
   // What the Start/Pause button said when the current press began (pointer down or Enter/Space down).
   const pressIntent = useRef<"start" | "pause" | null>(null);
   // performance.now() plus time the device slept (see createSleepAwareClock).
-  const [now] = useState(() => (typeof window === "undefined" ? () => 0 : createSleepAwareClock()));
+  const [now] = useState(() => (typeof window === "undefined" ? Object.assign(() => 0, { slept: () => 0 }) : createSleepAwareClock()));
+  // Bumped when the clock catches up on sleep, so the round-end timeout is set again for the real deadline.
+  const [sleepEpoch, setSleepEpoch] = useState(0);
 
   // Reset and mode picks stay one tap, but a started round they clear can be undone.
   function clearing(action: { type: "reset"; now: number } | { type: "choose"; mode: Mode; now: number }) {
@@ -42,8 +44,13 @@ export default function Home() {
 
   useEffect(() => {
     if (!active) return;
-    // Ticks only re-read the clock; a tab coming back into view catches up at once.
-    const tick = () => dispatch({ type: "tick", now: now() });
+    // Ticks only re-read the clock; a tab coming back into view catches up at once. When that reading added
+    // time the device slept, the round-end timeout below was set for the old deadline: bump the epoch to reset it.
+    const tick = () => {
+      const before = now.slept();
+      dispatch({ type: "tick", now: now() });
+      if (now.slept() !== before) setSleepEpoch((epoch) => epoch + 1);
+    };
     const interval = window.setInterval(tick, 1000);
     document.addEventListener("visibilitychange", tick);
     return () => {
@@ -62,7 +69,7 @@ export default function Home() {
       Math.max(0, endsAt - now()) + 20,
     );
     return () => window.clearTimeout(timeout);
-  }, [endsAt, now]);
+  }, [endsAt, now, sleepEpoch]);
 
   // The tab title is the end-of-round signal: time left while running, "Time is up" after a round.
   const title = tabTitle(view, SITE_TITLE);
@@ -120,9 +127,16 @@ export default function Home() {
               // release (a tab catching up on visibilitychange) turns Pause into Start, and that click must not start it.
               onPointerDown={() => { pressIntent.current = active ? "pause" : "start"; }}
               // Only the first keydown of a press counts: a held Space repeats keydown after the label changed.
-              onKeyDown={(event) => { if (!event.repeat && (event.key === "Enter" || event.key === " ")) pressIntent.current = active ? "pause" : "start"; }}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                // A held key: Enter's auto-repeat would click again (toggling Pause/Start), and Space's repeat would
+                // overwrite the intent. Only the first keydown of a press counts.
+                if (event.repeat) { event.preventDefault(); return; }
+                pressIntent.current = active ? "pause" : "start";
+              }}
               // A press that never becomes a click (cancelled pointer, focus moved away) leaves no stale intent behind.
               onPointerCancel={() => { pressIntent.current = null; }}
+              onPointerLeave={() => { pressIntent.current = null; }}
               onBlur={() => { pressIntent.current = null; }}
               onClick={() => {
                 const intent = pressIntent.current ?? (active ? "pause" : "start");

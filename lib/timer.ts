@@ -187,7 +187,7 @@ export function createSleepAwareClock(mono: () => number = () => performance.now
   let lastMono = mono();
   let lastWall = wall();
   let slept = 0;
-  return function now(): number {
+  function now(): number {
     const m = mono();
     const w = wall();
     const gap = w - lastWall - (m - lastMono);
@@ -195,5 +195,7 @@ export function createSleepAwareClock(mono: () => number = () => performance.now
     lastMono = m;
     lastWall = w;
     return m + slept;
-  };
+  }
+  /** Total sleep added so far: when it grows, timers scheduled before the sleep must be set again. */
+  return Object.assign(now, { slept: () => slept });
 }

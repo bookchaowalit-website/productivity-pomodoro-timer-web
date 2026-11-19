@@ -324,6 +324,39 @@ describe("deferred review 2026-11-19", () => {
     expect(clockText()).toBe("04:55");
   });
 
+  it("after catching up on sleep, the round-end timeout is set again for the real deadline", () => {
+    press(button("Start"));
+    seconds(15 * 60);
+    const timeouts = vi.spyOn(window, "setTimeout");
+    act(() => { vi.setSystemTime(Date.now() + 9 * 60_000); }); // slept 9 min; performance.now() stood still
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    expect(clockText()).toBe("01:00");
+    // A new one-shot for the remaining minute (+20 ms), not the old one still ~10 min away.
+    const delays = timeouts.mock.calls.map((call) => call[1] as number);
+    expect(delays.some((ms) => ms >= 60_000 && ms <= 60_100)).toBe(true);
+    timeouts.mockRestore();
+  });
+
+  it("a held Enter is not a second press: its repeat keydown is prevented and does not toggle", () => {
+    press(button("Start"));
+    const repeat = new KeyboardEvent("keydown", { key: "Enter", repeat: true, bubbles: true, cancelable: true });
+    act(() => { button("Pause").dispatchEvent(repeat); });
+    expect(repeat.defaultPrevented).toBe(true);
+    expect(button("Pause")).toBeTruthy();
+  });
+
+  it("a press dragged off the button leaves no intent behind", () => {
+    press(button("Start"));
+    act(() => { button("Pause").dispatchEvent(new Event("pointerdown", { bubbles: true })); });
+    // React builds onPointerLeave from pointerout to an element outside the button.
+    act(() => { button("Pause").dispatchEvent(new MouseEvent("pointerout", { bubbles: true, relatedTarget: document.body })); });
+    jump(25 * 60_000 + 300);
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    act(() => { button("Start").dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+    seconds(5);
+    expect(clockText()).toBe("04:55");
+  });
+
   it("holding Space on Pause while the round ends does not start the break on release", () => {
     press(button("Start"));
     const key = (repeat: boolean) => act(() => { button(repeat ? "Start" : "Pause").dispatchEvent(new KeyboardEvent("keydown", { key: " ", repeat, bubbles: true })); });
