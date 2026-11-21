@@ -175,10 +175,10 @@ test("Reset and mode picks that clear a started round announce it and that Undo 
   const { clearedLine } = await import("../lib/timer.ts");
   const running = timerReducer(initialView(), { type: "start", now: 0 });
   const reset = timerReducer(running, { type: "reset", now: 623_000 });
-  assert.equal(reset.announcement, "Focus round cleared at 14:37. Undo is available until you start the next round.");
+  assert.equal(reset.announcement, "Focus round cleared at 14:37. Undo is available for 8 seconds.");
   const picked = timerReducer(running, { type: "choose", mode: "shortBreak", now: 10_000 });
-  assert.equal(picked.announcement, "Short break selected, 05:00. Focus round cleared at 24:50. Undo is available until you start the next round.");
-  assert.equal(clearedLine({ mode: "longBreak", remaining: 61, active: false, sessions: 0 }), "Long break round cleared at 01:01. Undo is available until you start the next round.");
+  assert.equal(picked.announcement, "Short break selected, 05:00. Focus round cleared at 24:50. Undo is available for 8 seconds.");
+  assert.equal(clearedLine({ mode: "longBreak", remaining: 61, active: false, sessions: 0 }), "Long break round cleared at 01:01. Undo is available for 8 seconds.");
   // Nothing lost: no Undo line.
   assert.equal(timerReducer(initialView(), { type: "choose", mode: "longBreak", now: 0 }).announcement, "Long break selected, 15:00.");
 });

@@ -49,7 +49,7 @@ describe("modes", () => {
     expect(pressed()).toEqual(["Long break"]);
     expect(clockText()).toBe("15:00");
     expect(button("Start")).toBeTruthy();
-    expect(status()).toBe("Long break selected, 15:00. Focus round cleared at 24:57. Undo is available until you start the next round.");
+    expect(status()).toBe("Long break selected, 15:00. Focus round cleared at 24:57. Undo is available for 8 seconds.");
     seconds(5);
     expect(clockText()).toBe("15:00");
   });
@@ -60,7 +60,7 @@ describe("modes", () => {
     expect(status()).toBe("");
     press(button("Focus"));
     expect(clockText()).toBe("25:00");
-    expect(status()).toBe("Focus selected, 25:00. Focus round cleared at 24:56. Undo is available until you start the next round.");
+    expect(status()).toBe("Focus selected, 25:00. Focus round cleared at 24:56. Undo is available for 8 seconds.");
     press(button("Focus")); // nothing started now, so the plain line
     expect(status()).toBe("Focus selected, 25:00.");
     press(button("Focus")); // same message twice: the text still changes, so it is read again
@@ -247,19 +247,32 @@ describe("review 2026-11-18", () => {
     press(button("Start"));
     seconds(623);
     press(button("Reset"));
-    expect(status()).toBe("Focus round cleared at 14:37. Undo is available until you start the next round.");
+    expect(status()).toBe("Focus round cleared at 14:37. Undo is available for 8 seconds.");
     seconds(2);
-    expect(status()).toBe("Focus round cleared at 14:37. Undo is available until you start the next round."); // no per-tick updates
+    expect(status()).toBe("Focus round cleared at 14:37. Undo is available for 8 seconds."); // no per-tick updates
   });
 
-  it("a mode pick mid-round offers Undo, which waits (no timeout) until the next Start", () => {
+  it("a mode pick mid-round offers Undo for a few seconds, then expires", () => {
     press(button("Start"));
     seconds(10);
     press(button("Short break"));
     expect(toast()!.textContent).toContain("Focus cleared at 24:50");
-    seconds(120); // a keyboard or screen-reader user still reaches Undo
+    seconds(7);
     expect(toast()).not.toBeNull();
+    seconds(1);
+    expect(toast()).toBeNull();
+  });
+
+  it("keeps Undo open while its action has focus, then expires after focus leaves", () => {
     press(button("Start"));
+    seconds(5);
+    press(button("Reset"));
+    const undo = host.querySelector<HTMLButtonElement>(".as-toast button")!;
+    act(() => undo.focus());
+    seconds(10);
+    expect(toast()).not.toBeNull();
+    act(() => undo.blur());
+    seconds(8);
     expect(toast()).toBeNull();
   });
 
@@ -420,8 +433,10 @@ describe("deferred review 2026-11-19", () => {
     press(button("Short break")); // clears the running focus block: Undo appears
     seconds(3);
     press(button("Focus")); // the short break never started: nothing new is lost
-    seconds(30);
+    seconds(4); // choosing an unused mode does not reset the original toast deadline
     expect(toast()!.textContent).toContain("Focus cleared at 24:50");
+    seconds(1);
+    expect(toast()).toBeNull();
   });
 
   it("a round whose deadline passed while the device slept ends on wake, even if performance.now() stood still", () => {
