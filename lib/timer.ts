@@ -7,6 +7,7 @@ export const MODES: Record<Mode, { label: string; short: string; duration: numbe
 };
 
 export const LONG_BREAK_EVERY = 4;
+export const UNDO_TOAST_DURATION_MS = 8_000;
 
 export function clock(seconds: number) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
@@ -142,7 +143,7 @@ export function timerReducer(view: TimerView, action: TimerAction): TimerView {
 
 /** What the live region says when a started round is cleared: the round, the time left, and Undo. */
 export function clearedLine(lost: TimerState): string {
-  return `${MODES[lost.mode].label} round cleared at ${clock(lost.remaining)}. Undo is available until you start the next round.`;
+  return `${MODES[lost.mode].label} round cleared at ${clock(lost.remaining)}. Undo is available for ${UNDO_TOAST_DURATION_MS / 1000} seconds.`;
 }
 
 /**

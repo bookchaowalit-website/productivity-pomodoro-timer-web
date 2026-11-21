@@ -3,7 +3,7 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { AppFoot, AppTop } from "@/components/app-shell";
 import { SITE_TITLE, SOURCE_URL } from "@/lib/site";
-import { LONG_BREAK_EVERY, MODES, clock, createSleepAwareClock, cycleMarks, finishedLine, initialView, interruptedRound, tabTitle, timerReducer, type Mode, type TimerState } from "@/lib/timer";
+import { LONG_BREAK_EVERY, MODES, UNDO_TOAST_DURATION_MS, clock, createSleepAwareClock, cycleMarks, finishedLine, initialView, interruptedRound, tabTitle, timerReducer, type Mode, type TimerState } from "@/lib/timer";
 
 const MODE_ORDER = Object.keys(MODES) as Mode[];
 
@@ -11,9 +11,11 @@ export default function Home() {
   const [view, dispatch] = useReducer(timerReducer, undefined, initialView);
   const { mode, remaining, active, sessions } = view.timer;
   const duration = MODES[mode].duration;
-  // A Reset or mode pick that threw away a started round. Undo stays until the next Start (or Undo /
-  // Escape): a timeout could expire before a screen-reader or keyboard user reaches the button.
+  // A Reset or mode pick that threw away a started round. The toast expires after a few seconds,
+  // but stays open while someone is using it with the keyboard, screen reader, or pointer.
   const [undoRound, setUndoRound] = useState<TimerState | null>(null);
+  const [undoToastFocused, setUndoToastFocused] = useState(false);
+  const [undoToastHovered, setUndoToastHovered] = useState(false);
   const startRef = useRef<HTMLButtonElement>(null);
   // What the Start/Pause button said when the current press began (pointer down or Enter/Space down).
   // Keyboard and pointer presses are tracked apart: a pointer leaving the button must not cancel a held Space.
@@ -33,11 +35,20 @@ export default function Home() {
     dispatch(action);
     // Picking a mode that has not started loses nothing, so an earlier Undo stays with its own deadline.
     if (!lost) return;
+    setUndoToastFocused(false);
+    setUndoToastHovered(false);
     setUndoRound(lost);
   }
+  useEffect(() => {
+    if (!undoRound || undoToastFocused || undoToastHovered) return;
+    const timeout = window.setTimeout(() => setUndoRound(null), UNDO_TOAST_DURATION_MS);
+    return () => window.clearTimeout(timeout);
+  }, [undoRound, undoToastFocused, undoToastHovered]);
   // Closing the toast while focus is inside it sends focus to the timer button, not to <body>.
   function closeToast(focusInside: boolean) {
     setUndoRound(null);
+    setUndoToastFocused(false);
+    setUndoToastHovered(false);
     if (focusInside) startRef.current?.focus();
   }
   function undo(focusInside: boolean) {
@@ -160,6 +171,8 @@ export default function Home() {
                 keyIntent.current = null;
                 pointerIntent.current = null;
                 setUndoRound(null);
+                setUndoToastFocused(false);
+                setUndoToastHovered(false);
                 dispatch({ type: intent, now: now() });
               }}
             >
@@ -176,6 +189,13 @@ export default function Home() {
             className="as-toast"
             role="group"
             aria-label="Undo"
+            onFocusCapture={() => setUndoToastFocused(true)}
+            onBlurCapture={(event) => {
+              const next = event.relatedTarget as Node | null;
+              if (!next || !event.currentTarget.contains(next)) setUndoToastFocused(false);
+            }}
+            onPointerEnter={() => setUndoToastHovered(true)}
+            onPointerLeave={() => setUndoToastHovered(false)}
             onKeyDown={(event) => { if (event.key === "Escape") closeToast(event.currentTarget.contains(document.activeElement)); }}
           >
             <span>{MODES[undoRound.mode].label} cleared at {clock(undoRound.remaining)}</span>
